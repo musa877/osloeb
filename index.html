@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GoPack Fulfilment — Умный фулфилмент для маркетплейсов</title>
+  <meta name="description" content="Фулфилмент для Wildberries, Ozon и Яндекс Маркет. Приёмка, упаковка, маркировка, доставка до склада маркетплейса. От 4 ₽ за единицу." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy:    #102A43;
+      --navy-dk: #0b1e30;
+      --orange:  #FB6514;
+      --orange-dk:#d9530f;
+      --slate:   #627D98;
+      --mist:    #F7F9FC;
+
+      /* semantic aliases kept for backward compat */
+      --red:      var(--orange);
+      --red-dark: var(--orange-dk);
+      --blue:     var(--navy);
+      --blue-dark:var(--navy-dk);
+      --blue-accent:#2563eb;
+
+      /* LIGHT (default) */
+      --bg:    #F7F9FC;
+      --bg2:   #ffffff;
+      --bg3:   #EEF2F7;
+      --bg4:   #E2E8F0;
+      --border: rgba(16,42,67,.09);
+      --text:   #102A43;
+      --text2:  #627D98;
+      --text3:  #94A3B8;
+      --card:   #ffffff;
+      --radius: 12px;
+      --radius-lg: 20px;
+      --shadow:    0 4px 24px rgba(16,42,67,.07);
+      --shadow-lg: 0 14px 44px rgba(16,42,67,.12);
+      --ease: cubic-bezier(.22,.61,.36,1);
+    }
+    [data-theme="dark"] {
+      --bg:    #0b1e30;
+      --bg2:   #102A43;
+      --bg3:   #163650;
+      --bg4:   #1e4060;
+      --border: rgba(255,255,255,.08);
+      --text:   #F1F5F9;
+      --text2:  #94A3B8;
+      --text3:  #64748B;
+      --card:   #102A43;
+      --shadow:    0 4px 24px rgba(0,0,0,.35);
+      --shadow-lg: 0 14px 44px rgba(0,0,0,.5);
+    }
+
+    /* ---- Global font stack ---- */
+    h1,h2,h3,h4,.navbar-logo,.stat-value,.pricing-card-name,
+    .how-step h3,.section-title,.calc-form-title,.calc-result-title,
+    .contact-info h2,.contact-form h3,.footer-col h4 {
+      font-family:'Manrope',sans-serif;
+    }
+    /* tabular nums everywhere numbers appear */
+    .stat-value,.pricing-table td,.calc-total-value,
+    .logistics-row-price,.calc-line span:last-child {
+      font-variant-numeric: tabular-nums;
+    }
+    html { scroll-behavior: smooth; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+    body { overflow-x: hidden; }
+    a { text-decoration: none; color: inherit; }
+    button { cursor: pointer; font-family: inherit; border: none; outline: none; }
+    input, textarea, select { font-family: inherit; outline: none; }
+    ul { list-style: none; }
+
+    /* THEME TRANSITION */
+    *, *::before, *::after { transition: background-color 0.25s, border-color 0.25s, color 0.15s; }
+    /* Exclude animations from theme transition */
+    .hero-badge-dot, .reveal { transition: none; }
+    .reveal { transition: opacity 0.6s, transform 0.6s; }
+
+    /* BASE STYLES (light theme by default) */
+    .navbar { background: rgba(255,255,255,0.85) !important; box-shadow: 0 1px 0 rgba(10,37,64,0.04); }
+    .hero-bg {
+      background: radial-gradient(ellipse 90% 70% at 50% 0%, rgba(37,99,235,0.08) 0%, transparent 60%),
+                  radial-gradient(ellipse 50% 50% at 85% 60%, rgba(255,107,53,0.10) 0%, transparent 65%),
+                  radial-gradient(ellipse 50% 50% at 15% 80%, rgba(10,37,64,0.06) 0%, transparent 60%),
+                  var(--bg) !important;
+    }
+    .hero-grid { opacity: 0.5 !important; background-image: linear-gradient(rgba(10,37,64,0.04) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(10,37,64,0.04) 1px, transparent 1px) !important; }
+    .pricing-card, .logistics-card, .calc-wrapper, .contact-form, .how-step { box-shadow: var(--shadow); }
+    .pricing-card:hover, .logistics-card:hover { box-shadow: var(--shadow-lg); }
+    .pricing-card.popular { border-color: var(--red); box-shadow: 0 8px 32px rgba(255,107,53,0.18); }
+    .stats-grid { background: var(--border); }
+    .calc-result { background: linear-gradient(135deg, var(--blue) 0%, var(--blue-dark) 100%) !important; color: #fff !important; }
+    .calc-result .calc-result-title { color: #fff; }
+    .calc-result .calc-line span:first-child { color: rgba(255,255,255,0.7); }
+    .calc-result .calc-line span:last-child { color: #fff; }
+    .calc-result .calc-line { border-color: rgba(255,255,255,0.1); }
+    .calc-result .calc-total { border-top-color: rgba(255,107,53,0.5); }
+    .calc-result .calc-total-label { color: #fff; }
+    .calc-result .calc-note { color: rgba(255,255,255,0.5); }
+    .faq-question, .faq-answer-inner { background: var(--card); }
+    .footer, .mp-section { background: var(--bg2); }
+    .form-select, .form-input, .contact-input, .contact-textarea { background: var(--bg2); color: var(--text); }
+    .pricing-tabs { background: var(--bg3); }
+    .promo-banner { background: linear-gradient(135deg, rgba(255,107,53,0.10), rgba(37,99,235,0.06)); border-color: rgba(255,107,53,0.2); }
+    .navbar-nav a:hover { background: rgba(10,37,64,0.05); color: var(--blue); }
+    .btn-secondary { background: rgba(10,37,64,0.04); color: var(--blue); border-color: var(--border); }
+    .btn-secondary:hover { background: rgba(10,37,64,0.08); }
+    .hero h1 em { color: var(--red); }
+
+    /* DARK THEME OVERRIDES */
+    [data-theme="dark"] .navbar { background: rgba(10,22,40,0.85) !important; box-shadow: 0 1px 0 rgba(255,255,255,0.05); }
+    [data-theme="dark"] .hero-bg {
+      background: radial-gradient(ellipse 90% 70% at 50% 0%, rgba(37,99,235,0.20) 0%, transparent 60%),
+                  radial-gradient(ellipse 50% 50% at 80% 60%, rgba(255,107,53,0.12) 0%, transparent 65%),
+                  var(--bg) !important;
+    }
+    [data-theme="dark"] .hero-grid { opacity: 0.06 !important; background-image: linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px) !important; }
+    [data-theme="dark"] .calc-result { background: linear-gradient(135deg, #1a2d4a 0%, #0a1628 100%) !important; }
+    [data-theme="dark"] .form-select, [data-theme="dark"] .form-input,
+    [data-theme="dark"] .contact-input, [data-theme="dark"] .contact-textarea { background: var(--bg3); }
+    [data-theme="dark"] .navbar-nav a:hover { background: rgba(255,255,255,0.05); color: #fff; }
+    [data-theme="dark"] .btn-secondary { background: rgba(255,255,255,0.06); color: var(--text); }
+    [data-theme="dark"] .btn-secondary:hover { background: rgba(255,255,255,0.10); }
+    [data-theme="dark"] ::-webkit-scrollbar-thumb { background: #333; }
+    [data-theme="dark"] .service-card::before { background:radial-gradient(400px circle at var(--mx,50%) var(--my,50%),rgba(251,101,20,.12),transparent 60%); }
+    [data-theme="dark"] .service-tags span { background:rgba(255,255,255,.05); color:var(--text3); }
+    [data-theme="dark"] .pulse-dot { background: var(--bg3); border-color: var(--text2); }
+    [data-theme="dark"] .pulse-line { background: var(--border); }
+    [data-theme="dark"] .stat-value { background:linear-gradient(135deg,#60a5fa,#93c5fd); -webkit-background-clip:text; background-clip:text; }
+
+    /* THEME TOGGLE BUTTON */
+    .theme-toggle {
+      width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      background: rgba(10,37,64,0.05); border: 1px solid var(--border);
+      cursor: pointer; font-size: 17px; transition: background 0.2s, transform 0.2s !important;
+      flex-shrink: 0;
+    }
+    .theme-toggle:hover { background: rgba(10,37,64,0.1); transform: scale(1.08); }
+    [data-theme="dark"] .theme-toggle { background: rgba(255,255,255,0.06); }
+    [data-theme="dark"] .theme-toggle:hover { background: rgba(255,255,255,0.12); }
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+    /* CORPORATE LOGO STYLE */
+    .navbar-logo-icon { background: linear-gradient(135deg, var(--blue) 0%, var(--blue-accent) 100%) !important; box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
+    .navbar-logo span { color: var(--red); }
+
+    /* SECTION TAG */
+    .section-tag { background: rgba(255,107,53,0.10) !important; border-color: rgba(255,107,53,0.25) !important; color: var(--red-dark) !important; }
+    [data-theme="dark"] .section-tag { color: #ff8c5e !important; }
+    .hero-badge { background: rgba(37,99,235,0.10); border-color: rgba(37,99,235,0.25); color: var(--blue-accent); }
+    [data-theme="dark"] .hero-badge { background: rgba(37,99,235,0.18); color: #60a5fa; }
+    .hero-badge-dot { background: var(--blue-accent); }
+
+    /* STEP NUMBERS use blue gradient */
+    .how-step-num { background: linear-gradient(135deg, var(--blue), var(--blue-accent)) !important; box-shadow: 0 4px 14px rgba(37,99,235,0.25); }
+    .how-step-arrow { color: var(--red); border-color: var(--border); background: var(--bg2); }
+
+    /* STAT VALUES — blue for visual hierarchy */
+    .stat-value { background: linear-gradient(135deg, var(--blue) 0%, var(--blue-accent) 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
+    /* MARKETPLACE CARDS */
+    .mp-card { box-shadow: var(--shadow); }
+    .mp-card:hover { box-shadow: var(--shadow-lg); border-color: rgba(255,107,53,0.3) !important; }
+
+    /* CONTACT ITEM ICON */
+    .contact-item-icon { background: linear-gradient(135deg, rgba(37,99,235,0.10), rgba(255,107,53,0.10)) !important; }
+
+    /* FAQ ICON */
+    .faq-icon { background: rgba(37,99,235,0.10) !important; color: var(--blue-accent) !important; }
+
+    /* CTA gradient — orange */
+    .btn-primary, .hero-btns .btn-primary { background: linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%) !important; box-shadow: 0 6px 20px rgba(255,107,53,0.30); }
+    .btn-primary:hover { box-shadow: 0 10px 30px rgba(255,107,53,0.40); }
+    .navbar-cta { background: var(--red); box-shadow: 0 4px 14px rgba(255,107,53,0.25); }
+    .navbar-cta:hover { background: var(--red-dark); }
+    .contact-submit { background: linear-gradient(135deg, var(--red), var(--red-dark)) !important; box-shadow: 0 6px 20px rgba(255,107,53,0.30); }
+
+    /* Section title accent for "фулфилмент" highlight */
+    .hero h1 em { background: linear-gradient(135deg, var(--red) 0%, var(--orange) 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-style: normal; }
+
+    /* CONTAINER */
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+    /* ==================== NAVBAR ==================== */
+    .navbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(15,15,15,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      transition: background 0.3s;
+    }
+    .navbar-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px;
+    }
+    .navbar-logo {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 20px; font-weight: 700;
+    }
+    .navbar-logo span { color: var(--red); }
+    .navbar-logo-icon {
+      width: 32px; height: 32px; background: linear-gradient(135deg, var(--red), var(--orange));
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: #fff;
+    }
+    .navbar-nav { display: flex; align-items: center; gap: 4px; }
+    .navbar-nav a {
+      padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;
+      color: var(--text2); transition: color 0.2s, background 0.2s;
+    }
+    .navbar-nav a:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+    .navbar-cta {
+      padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 600;
+      background: var(--red); color: #fff; transition: background 0.2s, transform 0.1s;
+    }
+    .navbar-cta:hover { background: var(--red-dark); transform: translateY(-1px); }
+    .navbar-right { display: flex; align-items: center; gap: 12px; }
+    .mobile-menu-btn {
+      display: none; flex-direction: column; gap: 5px; padding: 8px; background: transparent;
+    }
+    .mobile-menu-btn span { display: block; width: 22px; height: 2px; background: var(--text2); border-radius: 2px; transition: 0.3s; }
+    .mobile-nav {
+      display: none; position: fixed; top: 64px; left: 0; right: 0; z-index: 99;
+      background: var(--bg2); border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+    }
+    .mobile-nav.open { display: block; }
+    .mobile-nav a { display: block; padding: 12px 0; font-size: 15px; color: var(--text2); border-bottom: 1px solid var(--border); }
+    .mobile-nav a:last-child { border: none; }
+
+    /* ==================== HERO ==================== */
+    .hero {
+      position: relative; overflow: hidden;
+      min-height: 100vh; display: flex; align-items: center;
+      padding: 100px 0 80px;
+    }
+    .hero-bg {
+      position: absolute; inset: 0; z-index: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(229,62,62,0.15) 0%, transparent 70%),
+                  radial-gradient(ellipse 50% 50% at 80% 50%, rgba(237,137,54,0.08) 0%, transparent 60%),
+                  var(--bg);
+    }
+    .hero-grid {
+      position: absolute; inset: 0; z-index: 0; opacity: 0.04;
+      background-image: linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+    .hero-inner { position: relative; z-index: 1; text-align: center; max-width: 800px; margin: 0 auto; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(229,62,62,0.1); border: 1px solid rgba(229,62,62,0.3);
+      border-radius: 100px; padding: 6px 16px; font-size: 13px; font-weight: 500;
+      color: #fc8181; margin-bottom: 28px;
+    }
+    .hero-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .hero h1 { font-size: clamp(36px, 6vw, 72px); font-weight: 800; line-height: 1.1; letter-spacing: -0.03em; margin-bottom: 12px; }
+    .hero h1 em { font-style: normal; color: var(--red); }
+    .hero h1 { margin-bottom: 24px; }
+    .hero-desc { font-size: clamp(15px, 2vw, 18px); color: var(--text2); max-width: 600px; margin: 0 auto 40px; line-height: 1.7; }
+    .hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    /* PULSE TIMELINE */
+    .hero-pulse { display:flex; align-items:center; justify-content:center; gap:0; margin-top:56px; flex-wrap:wrap; gap:8px; position:relative; }
+    .pulse-node { display:flex; flex-direction:column; align-items:center; gap:10px; }
+    .pulse-dot { width:14px; height:14px; border-radius:50%; background:#fff; border:2.5px solid var(--navy); box-shadow:0 0 0 4px rgba(16,42,67,.08); transition:border-color .3s; }
+    .pulse-node--active .pulse-dot { border-color:var(--orange); box-shadow:0 0 0 6px rgba(251,101,20,.18); }
+    .pulse-node span { font-size:12px; font-weight:600; color:var(--text2); letter-spacing:.03em; }
+    .pulse-line { position:relative; width:80px; height:2px; background:var(--border); border-radius:2px; overflow:hidden; margin-bottom:22px; }
+    .pulse-spark { position:absolute; top:0; left:-50%; width:50%; height:100%; background:linear-gradient(90deg,transparent,var(--orange),transparent); animation:spark 2.7s var(--ease) infinite; }
+    @keyframes spark { 0%{left:-50%} 70%,100%{left:110%} }
+    .pulse-badge { position:absolute; right:0; top:-32px; background:var(--orange); color:#fff; font-size:12px; font-weight:700; padding:4px 12px; border-radius:100px; white-space:nowrap; box-shadow:0 4px 12px rgba(251,101,20,.35); }
+    @media(max-width:600px){ .pulse-line{width:40px;} .pulse-badge{position:static;margin-top:8px;} }
+    @media(prefers-reduced-motion:reduce){ .pulse-spark{animation:none;} }
+    .btn-primary {
+      padding: 14px 28px; border-radius: 10px; font-size: 15px; font-weight: 600;
+      background: linear-gradient(135deg, var(--red), #c53030); color: #fff;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(229,62,62,0.35);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(229,62,62,0.45); }
+    .btn-secondary {
+      padding: 14px 28px; border-radius: 10px; font-size: 15px; font-weight: 600;
+      background: rgba(255,255,255,0.06); color: var(--text); border: 1px solid var(--border);
+      transition: background 0.2s, transform 0.2s;
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.1); transform: translateY(-2px); }
+
+    /* ==================== STATS BAR ==================== */
+    .stats-bar { padding: 0 0 80px; }
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 2px; background: var(--border); border-radius: var(--radius-lg); overflow: hidden;
+    }
+    .stat-card {
+      background: var(--card); padding: 28px 24px; text-align: center;
+      transition: background 0.2s;
+    }
+    .stat-card:hover { background: var(--bg3); }
+    .stat-value { font-size: 36px; font-weight: 800; line-height: 1; margin-bottom: 6px; background:linear-gradient(135deg,var(--navy),var(--blue-accent)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+    .stats-note { font-size:13px; color:var(--text3); text-align:center; max-width:680px; margin:24px auto 0; line-height:1.7; border-top:1px solid var(--border); padding-top:20px; }
+    .stat-label { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .stat-desc { font-size: 12px; color: var(--text3); }
+
+    /* ==================== HOW WE WORK ==================== */
+    .section { padding: 80px 0; }
+    .section-tag {
+      display: inline-block; background: rgba(229,62,62,0.1); border: 1px solid rgba(229,62,62,0.25);
+      color: #fc8181; font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.08em; padding: 4px 12px; border-radius: 100px; margin-bottom: 16px;
+    }
+    .section-title { font-size: clamp(26px, 4vw, 44px); font-weight: 800; letter-spacing: -0.02em; margin-bottom: 12px; }
+    .section-desc { font-size: 16px; color: var(--text2); max-width: 520px; line-height: 1.7; }
+    .section-header { margin-bottom: 52px; }
+
+    .how-steps { display: flex; gap: 0; position: relative; overflow: hidden; }
+    .how-step {
+      flex: 1; padding: 32px 24px; background: var(--card); position: relative;
+      border-right: 1px solid var(--border); transition: background 0.2s;
+    }
+    .how-step:last-child { border-right: none; }
+    .how-step:hover { background: var(--bg3); }
+    .how-step-num {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--red), var(--orange));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 16px;
+    }
+    .how-step-arrow {
+      position: absolute; right: -13px; top: 50%; transform: translateY(-50%);
+      width: 26px; height: 26px; background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; color: var(--red); z-index: 2;
+    }
+    .how-step:last-child .how-step-arrow { display: none; }
+    .how-step h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .how-step p { font-size: 13px; color: var(--text2); line-height: 1.6; }
+
+    /* ==================== PRICING ==================== */
+    .pricing-tabs {
+      display: flex; gap: 8px; margin-bottom: 32px;
+      background: var(--card); border-radius: 12px; padding: 6px; width: fit-content;
+    }
+    .pricing-tab {
+      padding: 8px 20px; border-radius: 8px; font-size: 14px; font-weight: 500;
+      color: var(--text2); background: transparent; transition: all 0.2s;
+    }
+    .pricing-tab.active { background: var(--red); color: #fff; font-weight: 600; }
+    .pricing-tab:hover:not(.active) { background: rgba(255,255,255,0.06); color: var(--text); }
+
+    .pricing-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .pricing-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 28px 24px; position: relative; display: flex; flex-direction: column;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .pricing-card:hover { border-color: rgba(229,62,62,0.3); transform: translateY(-3px); }
+    .pricing-card.popular {
+      border-color: var(--red); background: linear-gradient(180deg, rgba(229,62,62,0.06) 0%, var(--card) 100%);
+    }
+    .popular-badge {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--red); color: #fff; font-size: 11px; font-weight: 700;
+      padding: 3px 14px; border-radius: 100px; white-space: nowrap; letter-spacing: 0.04em;
+    }
+    .pricing-card-name { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+    .pricing-card-desc { font-size: 12px; color: var(--text3); margin-bottom: 20px; line-height: 1.5; }
+    .pricing-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .pricing-table th { font-size: 11px; color: var(--text3); font-weight: 500; padding: 4px 0; text-align: left; }
+    .pricing-table th:last-child { text-align: right; }
+    .pricing-table td { font-size: 13px; padding: 6px 0; border-top: 1px solid var(--border); }
+    .pricing-table td:first-child { color: var(--text2); }
+    .pricing-table td:last-child { text-align: right; font-weight: 600; color: var(--text); }
+    .pricing-features { flex: 1; margin-bottom: 24px; }
+    .feature-item { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; font-size: 13px; color: var(--text2); }
+    .feature-check { width: 16px; height: 16px; border-radius: 50%; background: rgba(229,62,62,0.15); color: var(--red); display: flex; align-items: center; justify-content: center; font-size: 9px; flex-shrink: 0; margin-top: 1px; }
+    .feature-cross { width: 16px; height: 16px; border-radius: 50%; background: rgba(255,255,255,0.05); color: var(--text3); display: flex; align-items: center; justify-content: center; font-size: 9px; flex-shrink: 0; margin-top: 1px; }
+    .feature-item.disabled { color: var(--text3); }
+    .btn-plan {
+      width: 100%; padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 600;
+      background: rgba(229,62,62,0.1); color: var(--red); border: 1px solid rgba(229,62,62,0.25);
+      transition: all 0.2s;
+    }
+    .btn-plan:hover { background: var(--red); color: #fff; border-color: var(--red); }
+    .pricing-card.popular .btn-plan { background: var(--red); color: #fff; border-color: var(--red); }
+    .pricing-card.popular .btn-plan:hover { background: var(--red-dark); }
+
+    /* LOGISTICS TABLE */
+    .logistics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .logistics-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+    .logistics-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
+    .logistics-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); gap: 12px; }
+    .logistics-row:last-child { border-bottom: none; }
+    .logistics-row-name { font-size: 13px; color: var(--text2); }
+    .logistics-row-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    .logistics-row-price { font-size: 14px; font-weight: 600; color: var(--red); white-space: nowrap; }
+
+    /* ==================== CALCULATOR ==================== */
+    .calc-wrapper {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 40px;
+    }
+    .calc-grid { display: grid; grid-template-columns: 1fr 340px; gap: 40px; align-items: start; }
+    .calc-form-title { font-size: 20px; font-weight: 700; margin-bottom: 24px; }
+    .form-group { margin-bottom: 20px; }
+    .form-label { display: block; font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 8px; }
+    .form-select, .form-input {
+      width: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 11px 14px; font-size: 14px; color: var(--text); transition: border-color 0.2s;
+      appearance: none;
+    }
+    .form-select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+    .form-select:focus, .form-input:focus { border-color: rgba(229,62,62,0.5); }
+    .form-input::placeholder { color: var(--text3); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .calc-result {
+      background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 28px; position: sticky; top: 88px;
+    }
+    .calc-result-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
+    .calc-line { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .calc-line:last-of-type { border-bottom: none; }
+    .calc-line span:first-child { color: var(--text2); }
+    .calc-line span:last-child { font-weight: 500; }
+    .calc-total { display: flex; justify-content: space-between; align-items: center; padding: 16px 0 0; margin-top: 12px; border-top: 2px solid rgba(229,62,62,0.3); }
+    .calc-total-label { font-size: 15px; font-weight: 600; }
+    .calc-total-value { font-size: 24px; font-weight: 800; color: var(--red); }
+    .calc-cta {
+      margin-top: 16px; width: 100%; padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 600;
+      background: var(--red); color: #fff; transition: background 0.2s;
+    }
+    .calc-cta:hover { background: var(--red-dark); }
+    .calc-share { display: flex; gap: 8px; margin-top: 10px; }
+    .calc-share-btn {
+      flex: 1; padding: 10px 8px; border-radius: 10px; font-size: 12px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      text-decoration: none; transition: opacity 0.2s, transform 0.2s;
+    }
+    .calc-share-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+    .calc-share-wa { background: #25d366; color: #fff; }
+    .calc-share-tg { background: #229ed9; color: #fff; }
+    .calc-note { font-size: 11px; color: var(--text3); margin-top: 10px; text-align: center; line-height: 1.5; }
+    .promo-banner {
+      background: linear-gradient(135deg, rgba(229,62,62,0.15), rgba(237,137,54,0.1));
+      border: 1px solid rgba(229,62,62,0.25); border-radius: 10px;
+      padding: 14px 18px; display: flex; align-items: center; gap: 12px; margin-top: 20px;
+    }
+    .promo-icon { font-size: 20px; }
+    .promo-text { font-size: 13px; color: var(--text2); }
+    .promo-text strong { color: var(--text); display: block; margin-bottom: 2px; }
+
+    /* ==================== MARKETPLACES ==================== */
+    .mp-section { padding: 60px 0; background: var(--bg2); }
+    .mp-grid { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-top: 36px; }
+    .mp-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px 32px; display: flex; align-items: center; gap: 14px;
+      font-size: 16px; font-weight: 600; transition: border-color 0.2s, transform 0.2s;
+    }
+    .mp-card:hover { border-color: rgba(229,62,62,0.3); transform: translateY(-2px); }
+    .mp-logo { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .mp-wb { background: #cb11ab; }
+    .mp-ozon { background: #005bff; }
+    .mp-ym { background: #fc3f1d; }
+
+    /* ==================== FAQ ==================== */
+    .faq-list { max-width: 760px; }
+    .faq-item { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; overflow: hidden; }
+    .faq-question {
+      width: 100%; display: flex; justify-content: space-between; align-items: center;
+      padding: 20px 24px; background: var(--card); font-size: 15px; font-weight: 600;
+      text-align: left; gap: 16px; cursor: pointer; transition: background 0.2s;
+    }
+    .faq-question:hover { background: var(--bg3); }
+    .faq-icon {
+      width: 24px; height: 24px; border-radius: 6px; background: rgba(229,62,62,0.1);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      font-size: 14px; color: var(--red); transition: transform 0.3s;
+    }
+    .faq-item.open .faq-icon { transform: rotate(45deg); }
+    .faq-answer {
+      max-height: 0; overflow: hidden; transition: max-height 0.35s ease, padding 0.3s;
+    }
+    .faq-item.open .faq-answer { max-height: 400px; }
+    .faq-answer-inner { padding: 0 24px 20px; font-size: 14px; color: var(--text2); line-height: 1.8; background: var(--card); }
+    [data-theme="dark"] .faq-question { color: #ffffff; }
+    [data-theme="dark"] .faq-answer-inner { color: rgba(255,255,255,0.85); }
+
+    /* ==================== CONTACT ==================== */
+    .contact-section { padding: 80px 0; }
+    .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: start; }
+    .contact-info h2 { font-size: clamp(24px, 4vw, 40px); font-weight: 800; margin-bottom: 16px; }
+    .contact-info p { font-size: 16px; color: var(--text2); line-height: 1.7; margin-bottom: 32px; }
+    .contact-items { display: flex; flex-direction: column; gap: 16px; }
+    .contact-item { display: flex; align-items: center; gap: 14px; }
+    .contact-item-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: rgba(229,62,62,0.1); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+    }
+    .contact-item-label { font-size: 12px; color: var(--text3); margin-bottom: 2px; }
+    .contact-item-value { font-size: 15px; font-weight: 600; }
+    .social-links { display: flex; gap: 10px; margin-top: 24px; }
+    .social-btn {
+      display: flex; align-items: center; gap: 8px; padding: 10px 18px;
+      border-radius: 10px; font-size: 13px; font-weight: 600;
+      transition: transform 0.2s, opacity 0.2s;
+    }
+    .social-btn:hover { transform: translateY(-2px); opacity: 0.9; }
+    .social-wa { background: #25d366; color: #fff; }
+    .social-tg { background: #229ed9; color: #fff; }
+    .contact-form { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 36px; }
+    .contact-form h3 { font-size: 20px; font-weight: 700; margin-bottom: 24px; }
+    .contact-input, .contact-textarea {
+      width: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 14px; font-size: 14px; color: var(--text); transition: border-color 0.2s;
+    }
+    .contact-input:focus, .contact-textarea:focus { border-color: rgba(229,62,62,0.5); }
+    .contact-input::placeholder, .contact-textarea::placeholder { color: var(--text3); }
+    .contact-textarea { resize: vertical; min-height: 90px; }
+    .contact-submit {
+      width: 100%; padding: 14px; border-radius: 10px; font-size: 15px; font-weight: 600;
+      background: linear-gradient(135deg, var(--red), #c53030); color: #fff;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(229,62,62,0.3);
+    }
+    .contact-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(229,62,62,0.4); }
+    .contact-agree { font-size: 11px; color: var(--text3); text-align: center; margin-top: 10px; line-height: 1.5; }
+    .contact-agree a { color: rgba(229,62,62,0.7); }
+
+    /* ==================== FOOTER ==================== */
+    .footer { background: var(--bg2); border-top: 1px solid var(--border); padding: 40px 0 24px; }
+    .footer-inner { display: flex; justify-content: space-between; align-items: flex-start; gap: 40px; margin-bottom: 32px; }
+    .footer-brand { max-width: 280px; }
+    .footer-brand p { font-size: 13px; color: var(--text3); margin-top: 12px; line-height: 1.7; }
+    .footer-links { display: flex; gap: 48px; }
+    .footer-col h4 { font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .footer-col a { display: block; font-size: 13px; color: var(--text3); padding: 4px 0; transition: color 0.2s; }
+    .footer-col a:hover { color: var(--text); }
+    .footer-bottom { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 24px; font-size: 12px; color: var(--text3); flex-wrap: wrap; gap: 12px; }
+
+    /* ==================== SUCCESS MODAL ==================== */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: auto; }
+    .modal {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 40px; max-width: 400px; width: 90%; text-align: center;
+      transform: translateY(20px); transition: transform 0.3s;
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-icon { font-size: 48px; margin-bottom: 16px; }
+    .modal h3 { font-size: 22px; font-weight: 700; margin-bottom: 10px; }
+    .modal p { font-size: 14px; color: var(--text2); margin-bottom: 24px; line-height: 1.7; }
+    .modal-close {
+      padding: 12px 28px; border-radius: 10px; font-size: 14px; font-weight: 600;
+      background: var(--red); color: #fff;
+    }
+    .modal-close:hover { background: var(--red-dark); }
+
+    /* ==================== RESPONSIVE ==================== */
+    @media (max-width: 900px) {
+      .pricing-grid { grid-template-columns: repeat(2, 1fr); }
+      .how-steps { flex-direction: column; }
+      .how-step { border-right: none; border-bottom: 1px solid var(--border); }
+      .how-step:last-child { border-bottom: none; }
+      .how-step-arrow { display: none; }
+      .logistics-grid { grid-template-columns: 1fr; }
+      .calc-grid { grid-template-columns: 1fr; }
+      .calc-result { position: static; }
+      .contact-grid { grid-template-columns: 1fr; }
+      .footer-inner { flex-direction: column; }
+      .footer-links { flex-wrap: wrap; gap: 32px; }
+    }
+    @media (max-width: 700px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .pricing-grid { grid-template-columns: 1fr; }
+      .navbar-nav, .navbar-cta { display: none; }
+      .mobile-menu-btn { display: flex; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .calc-wrapper { padding: 24px 16px; }
+      .contact-form { padding: 24px 16px; }
+    }
+
+    /* SERVICES GRID */
+    .services-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+    @media(max-width:900px){ .services-grid{grid-template-columns:1fr 1fr;} }
+    @media(max-width:600px){ .services-grid{grid-template-columns:1fr;} }
+    .service-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:28px 24px; display:flex; flex-direction:column; gap:12px; transition:transform .25s var(--ease),box-shadow .25s var(--ease); position:relative; overflow:hidden; }
+    .service-card::before { content:''; position:absolute; inset:0; border-radius:inherit; background:radial-gradient(400px circle at var(--mx,50%) var(--my,50%),rgba(251,101,20,.07),transparent 60%); opacity:0; transition:opacity .4s; pointer-events:none; }
+    .service-card:hover::before { opacity:1; }
+    .service-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-lg); border-color:rgba(251,101,20,.25); }
+    .service-icon { font-size:28px; line-height:1; }
+    .service-card h3 { font-size:17px; font-weight:700; color:var(--text); }
+    .service-card p { font-size:14px; color:var(--text2); line-height:1.75; flex:1; }
+    .service-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+    .service-tags span { font-size:11px; font-weight:600; padding:3px 10px; border-radius:100px; background:rgba(16,42,67,.06); color:var(--slate); border:1px solid var(--border); }
+    [data-theme="dark"] .service-tags span { background:rgba(255,255,255,.06); }
+
+    /* DIVIDER */
+    .divider { height: 1px; background: var(--border); margin: 0; }
+
+    /* SCROLL REVEAL (simple fade) */
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s, transform 0.6s; }
+    .reveal.visible { opacity: 1; transform: none; }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="container navbar-inner">
+    <a href="#" class="navbar-logo">
+      <div class="navbar-logo-icon">G</div>
+      GoPack<span>.</span>
+    </a>
+    <div class="navbar-nav">
+      <a href="#services">Услуги</a>
+      <a href="#pricing">Цены</a>
+      <a href="#calculator">Калькулятор</a>
+      <a href="#faq">FAQ</a>
+      <a href="#contacts">Контакты</a>
+    </div>
+    <div class="navbar-right">
+      <button class="theme-toggle" id="themeToggle" aria-label="Сменить тему" title="Светлая / тёмная тема">🌙</button>
+      <a href="#contacts" class="navbar-cta">Оставить заявку</a>
+      <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Меню">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</nav>
+<div class="mobile-nav" id="mobileNav">
+  <a href="#services" onclick="closeMobile()">Услуги</a>
+  <a href="#pricing" onclick="closeMobile()">Цены</a>
+  <a href="#calculator" onclick="closeMobile()">Калькулятор</a>
+  <a href="#faq" onclick="closeMobile()">FAQ</a>
+  <a href="#contacts" onclick="closeMobile()">Контакты</a>
+  <a href="#contacts" onclick="closeMobile()" style="color:#e53e3e;font-weight:600;border:none;">Оставить заявку →</a>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="container">
+    <div class="hero-inner">
+      <div class="hero-badge">
+        <span class="hero-badge-dot"></span>
+        Фулфилмент для WB · Ozon · Яндекс Маркет — Москва
+      </div>
+      <h1>Ваш товар на складе<br>маркетплейса — <em>уже завтра</em></h1>
+      <p class="hero-desc">Забираем товар с рынков Москвы, принимаем и отгружаем день в день. Точность сборки 99.9% с фото- и видеофиксацией каждой единицы. Маркировка от 4 ₽. Вы продаёте — логистику берём на себя.</p>
+      <div class="hero-btns">
+        <a href="#calculator" class="btn-primary">Рассчитать стоимость</a>
+        <a href="#contacts" class="btn-secondary">Получить консультацию</a>
+      </div>
+      <!-- Pulse timeline вместо стокового фото -->
+      <div class="hero-pulse">
+        <div class="pulse-node">
+          <div class="pulse-dot"></div>
+          <span>Забор</span>
+        </div>
+        <div class="pulse-line"><i class="pulse-spark"></i></div>
+        <div class="pulse-node">
+          <div class="pulse-dot"></div>
+          <span>Приёмка</span>
+        </div>
+        <div class="pulse-line"><i class="pulse-spark" style="animation-delay:.9s"></i></div>
+        <div class="pulse-node">
+          <div class="pulse-dot"></div>
+          <span>Упаковка</span>
+        </div>
+        <div class="pulse-line"><i class="pulse-spark" style="animation-delay:1.8s"></i></div>
+        <div class="pulse-node pulse-node--active">
+          <div class="pulse-dot"></div>
+          <span>Отгрузка</span>
+        </div>
+        <div class="pulse-badge">День в день ⚡</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section class="stats-bar">
+  <div class="container">
+    <div class="stats-grid reveal">
+      <div class="stat-card">
+        <div class="stat-value" data-count="99.9" data-suffix="%">0%</div>
+        <div class="stat-label">точность сборки</div>
+        <div class="stat-desc">двойной контроль + поштучное сканирование</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="-webkit-text-fill-color:var(--orange);font-size:22px">День в день</div>
+        <div class="stat-label">скорость приёмки</div>
+        <div class="stat-desc">приёмка и отгрузка в день поступления</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" data-count="50" data-suffix="+">0+</div>
+        <div class="stat-label">постоянных клиентов</div>
+        <div class="stat-desc">селлеры WB, Ozon и Яндекс Маркет</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="-webkit-text-fill-color:var(--orange);font-size:22px">от 4 ₽</div>
+        <div class="stat-label">маркировка / шт.</div>
+        <div class="stat-desc">прозрачные тарифы, без скрытых платежей</div>
+      </div>
+    </div>
+    <p class="stats-note reveal">Работаем с самозанятыми, ИП и ООО. Предоставляем полный пакет закрывающих документов: акты, счета-фактуры, УПД. Каждая партия фиксируется с фото и видео при приёмке.</p>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section class="section" id="services">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-tag">Услуги</div>
+      <h2 class="section-title">Полный цикл фулфилмента —<br>от рынка до карточки товара</h2>
+      <p class="section-desc">Каждый этап выстроен так, чтобы товар не зависал, деньги не замораживались, а маркетплейс принял поставку с первого раза.</p>
+    </div>
+    <div class="services-grid reveal">
+      <div class="service-card spotlight-card">
+        <div class="service-icon">📥</div>
+        <h3>Приёмка и пересчёт</h3>
+        <p>Принимаем в день поступления. Пересчитываем каждую единицу вручную, сверяем с накладной. Бракованные позиции фотографируем и согласовываем с вами — до начала обработки, не после. Вы получаете акт приёмки с точным количеством по каждому артикулу, а не «примерно столько».</p>
+        <div class="service-tags"><span>день в день</span><span>фото/видео фиксация</span><span>поштучный учёт</span></div>
+      </div>
+      <div class="service-card spotlight-card">
+        <div class="service-icon">📦</div>
+        <h3>Упаковка по стандартам МП</h3>
+        <p>Упаковываем по требованиям WB, Ozon и Яндекс Маркет — товар не завернут на приёмке склада. Хрупкие позиции защищаем трёхслойной воздушно-пузырчатой плёнкой с фиксацией углов. Одежду пакуем в БОПП с клапаном, мелочёвку — в курьерские пакеты. Каждый шов проклеен, товар доедет без повреждений.</p>
+        <div class="service-tags"><span>WB / Ozon / ЯМ</span><span>3-слойная плёнка</span><span>хрупкое и КГТ</span></div>
+      </div>
+      <div class="service-card spotlight-card">
+        <div class="service-icon">🏷️</div>
+        <h3>Маркировка от 4 ₽</h3>
+        <p>Клеим штрихкоды, коды Честного ЗНАКа и доп. этикетки (состав, страна, размер). Термопринтеры промышленного класса — этикетка не стирается и не отклеивается при транспортировке. Сканируем каждый код перед отгрузкой: маркетплейс примет партию с первого раза без штрафов за пересорт.</p>
+        <div class="service-tags"><span>от 4 ₽/шт.</span><span>Честный ЗНАК</span><span>сканирование 100%</span></div>
+      </div>
+      <div class="service-card spotlight-card">
+        <div class="service-icon">🏢</div>
+        <h3>Хранение: паллетное и полочное</h3>
+        <p>Отапливаемый склад в Москве с круглосуточной охраной и видеонаблюдением. Полочное — для мелких партий и быстрого оборота. Паллетное — для опта и КГТ. Платите только за фактически занятое место по дням, без минимального срока и абонплаты. Остатки видны в личном кабинете в реальном времени.</p>
+        <div class="service-tags"><span>охрана 24/7</span><span>оплата по факту</span><span>онлайн-остатки</span></div>
+      </div>
+      <div class="service-card spotlight-card">
+        <div class="service-icon">🔄</div>
+        <h3>Возвраты и FBO/FBS</h3>
+        <p>Работаем по обеим схемам. FBO — формируем поставки и отгружаем на РЦ. FBS — собираем заказы по мере поступления и передаём в доставку. Возвраты с маркетплейса принимаем, проверяем, фотографируем: по вашему решению — в оборот, переупаковка или утилизация. Бракованный возврат не уедет повторно к покупателю.</p>
+        <div class="service-tags"><span>FBO + FBS</span><span>работа с возвратами</span><span>переупаковка</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW WE WORK -->
+<section class="section" style="background:var(--bg2)" id="how">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-tag">Схема работы</div>
+      <h2 class="section-title">От забора до полки — 6 шагов</h2>
+      <p class="section-desc">Шаги 3–5 укладываются в один рабочий день. Товар не зависает.</p>
+    </div>
+    <div class="how-steps reveal">
+      <div class="how-step">
+        <div class="how-step-num">1</div>
+        <h3>Заявка и расчёт</h3>
+        <p>Считаете смету в калькуляторе или оставляете заявку. Менеджер связывается в течение часа, согласует условия и выставляет договор.</p>
+        <div class="how-step-arrow">→</div>
+      </div>
+      <div class="how-step">
+        <div class="how-step-num">2</div>
+        <h3>Забор товара</h3>
+        <p>Забираем с рынков Москвы (Южные ворота, Садовод, ТЯК) или по адресу поставщика. Можно привезти самому.</p>
+        <div class="how-step-arrow">→</div>
+      </div>
+      <div class="how-step">
+        <div class="how-step-num">3</div>
+        <h3>Приёмка день в день</h3>
+        <p>Принимаем, пересчитываем поштучно, снимаем брак с фото и видеофиксацией. Вы получаете акт с точным количеством.</p>
+        <div class="how-step-arrow">→</div>
+      </div>
+      <div class="how-step">
+        <div class="how-step-num">4</div>
+        <h3>Упаковка и маркировка</h3>
+        <p>Упаковываем по стандарту маркетплейса, клеим штрихкоды и Честный ЗНАК. Сканируем каждую единицу.</p>
+        <div class="how-step-arrow">→</div>
+      </div>
+      <div class="how-step">
+        <div class="how-step-num">5</div>
+        <h3>Отгрузка на склад МП</h3>
+        <p>Формируем поставку, оформляем документы в ЛК и доставляем на РЦ Wildberries, Ozon или Яндекс Маркет.</p>
+        <div class="how-step-arrow">→</div>
+      </div>
+      <div class="how-step">
+        <div class="how-step-num">6</div>
+        <h3>Отчёт и контроль</h3>
+        <p>Статус партии в личном кабинете. Уведомления в Telegram. Закрывающие документы по запросу.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MARKETPLACES -->
+<div class="mp-section">
+  <div class="container">
+    <div style="text-align:center">
+      <div class="section-tag">Работаем с ведущими маркетплейсами</div>
+    </div>
+    <div class="mp-grid">
+      <div class="mp-card">
+        <div class="mp-logo mp-wb" style="font-size:13px;font-weight:800;color:#fff;letter-spacing:-0.5px">WB</div>
+        Wildberries
+      </div>
+      <div class="mp-card">
+        <div class="mp-logo mp-ozon" style="font-size:13px;font-weight:800;color:#fff">OZ</div>
+        Ozon
+      </div>
+      <div class="mp-card">
+        <div class="mp-logo mp-ym" style="font-size:13px;font-weight:800;color:#fff">ЯМ</div>
+        Яндекс Маркет
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRICING -->
+<section class="section" id="pricing">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-tag">Цены</div>
+      <h2 class="section-title">Прозрачные цены без скрытых платежей</h2>
+      <p class="section-desc">Выбирайте тариф под объём вашего бизнеса. Цена тарифа уже включает все указанные услуги.</p>
+    </div>
+
+    <div class="pricing-tabs" id="pricingTabs">
+      <button class="pricing-tab active" onclick="showPricingTab('tariffs', this)">Тарифы</button>
+      <button class="pricing-tab" onclick="showPricingTab('logistics', this)">Логистика и доставка</button>
+      <button class="pricing-tab" onclick="showPricingTab('extra', this)">Дополнительные услуги</button>
+    </div>
+
+    <!-- TARIFFS TAB -->
+    <div id="tab-tariffs" class="reveal">
+      <div class="pricing-grid">
+        <!-- ЭКОНОМ -->
+        <div class="pricing-card">
+          <div class="pricing-card-name">Эконом</div>
+          <div class="pricing-card-desc">Только приёмка и пересчёт — без маркировки</div>
+          <table class="pricing-table">
+            <thead><tr><th>Объём</th><th>₽/шт.</th></tr></thead>
+            <tbody>
+              <tr><td>от 1 000 шт.</td><td>9 ₽</td></tr>
+              <tr><td>от 500 шт.</td><td>13 ₽</td></tr>
+              <tr><td>от 250 шт.</td><td>17 ₽</td></tr>
+              <tr><td>от 100 шт.</td><td>21 ₽</td></tr>
+              <tr><td>от 1 шт.</td><td>25 ₽</td></tr>
+            </tbody>
+          </table>
+          <div class="pricing-features">
+            <div class="feature-item"><span class="feature-check">✓</span>Приёмка товара</div>
+            <div class="feature-item"><span class="feature-check">✓</span>Пересчёт</div>
+            <div class="feature-item"><span class="feature-check">✓</span>Проверка на брак</div>
+            <div class="feature-item disabled"><span class="feature-cross">✕</span>Маркировка</div>
+            <div class="feature-item disabled"><span class="feature-cross">✕</span>Упаковка</div>
+            <div class="feature-item disabled"><span class="feature-cross">✕</span>Идентификация SKU</div>
+          </div>
+          <button class="btn-plan" onclick="document.getElementById('contacts').scrollIntoView({behavior:'smooth'})">Выбрать тариф</button>
+        </div>
+        <!-- ОПТИМАЛЬНЫЙ -->
+        <div class="pricing-card popular">
+          <div class="popular-badge">Популярный</div>
+          <div class="pricing-card-name">Оптимальный</div>
+          <div class="pricing-card-desc">Приёмка + пересчёт + проверка брака + одинарная маркировка</div>
+          <table class="pricing-table">
+            <thead><tr><th>Объём</th><th>₽/шт.</th></tr></thead>
+            <tbody>
+              <tr><td>от 1 000 шт.</td><td>13 ₽</td></tr>
+              <tr><td>от 500 шт.</td><td>17 ₽</td></tr>
+              <tr><td>от 250 шт.</td><td>21 ₽</td></tr>
+              <tr><td>от 100 шт.</td><td>25 ₽</td></tr>
+              <tr><td>от 1 шт.</td><td>29 ₽</td></tr>
+            </tbody>
+          </table>
+          <div class="pricing-features">
+            <div class="feature-item"><span class="feature-check">✓</span>Приёмка товара</div>
+            <div class="feature-item"><span class="feature-check">✓</span>Пересчёт</div>
+            <div class="feature-item"><span class="feature-check">✓</span>Проверка на брак</div>
+            <div class="feature-item"><span class="feature-check">✓</span>Одинарная маркировка</div>
+            <div class="feature-item disabled"><span class="feature-cross">✕</span>Упаковка</div>
+            <div class="feature-item disabled"><span class="feature-cross">✕</span>Двойная маркировка</div>
+            <div class="feature-item disabled"><span class="feature-cross">✕</span>Идентификация SKU</div>
+          </div>
+          <button class="btn-plan" onclick="document.getElementById('contacts').scrollIntoView({behavior:'smooth'})">Выбрать тариф</button>
+        </div>
+        <!-- СТАНДАРТ -->
+        <div class="pricing-card">
+          <div class="pricing-card-name">Стандарт</div>
+          <div class="pricing-card-desc">Оптимальный + двойная маркировка + идентификация SKU</div>
+          <table class="pricing-table">
+            <thead><tr><th>Объём</th><th>₽/шт.</th></tr></thead>
+            <tbody>
+              <tr><td>от 1 000 шт.</td><td>17 ₽</td></tr>
+              <tr><td>от 500 шт.</td><td>21 ₽</td></tr>
+              <tr><td>от 250 шт.</td><td>25 ₽</td></tr>
+              <tr><td>от 100 шт.</td><td>29 ₽</td></tr>
+              <tr><td>от 1 шт.</td><td>33 ₽</td></tr>
+            </tbody>
+          </table>
+          <div class="pricing-features">
+            <div class="feature-item"><span class="feature-check">✓</span>Приёмка товара</div>
+            <div class="feature-item"><span class="feature-check">✓</span>Пересчёт</div>
+            <div class="feature-item"><span class="feature-check">✓</span>Проверка на брак</div>
+            <div class="feature-item"><span class="feature-check">✓</span>Двойная маркировка</div>
+            <div class="feature-item"><span class="feature-check">✓</span>Идентификация SKU</div>
+            <div class="feature-item disabled"><span class="feature-cross">✕</span>Упаковка</div>
+          </div>
+          <button class="btn-plan" onclick="document.getElementById('contacts').scrollIntoView({behavior:'smooth'})">Выбрать тариф</button>
+        </div>
+        <!-- ПРЕМИУМ -->
+        <div class="pricing-card">
+          <div class="pricing-card-name">Премиум</div>
+          <div class="pricing-card-desc">Полный фулфилмент под ключ — упаковка от нас включена</div>
+          <table class="pricing-table">
+            <thead><tr><th>Объём</th><th>₽/шт.</th></tr></thead>
+            <tbody>
+              <tr><td>от 1 000 шт.</td><td>25 ₽</td></tr>
+              <tr><td>от 500 шт.</td><td>30 ₽</td></tr>
+              <tr><td>от 250 шт.</td><td>36 ₽</td></tr>
+              <tr><td>от 100 шт.</td><td>42 ₽</td></tr>
+              <tr><td>от 1 шт.</td><td>от 45 ₽</td></tr>
+            </tbody>
+          </table>
+          <div class="pricing-features">
+            <div class="feature-item"><span class="feature-check">✓</span>Приёмка товара</div>
+            <div class="feature-item"><span class="feature-check">✓</span>Пересчёт + проверка брака</div>
+            <div class="feature-item"><span class="feature-check">✓</span>Двойная маркировка</div>
+            <div class="feature-item"><span class="feature-check">✓</span>Идентификация SKU</div>
+            <div class="feature-item"><span class="feature-check">✓</span>Упаковка (материал включён)</div>
+            <div class="feature-item"><span class="feature-check">✓</span>Фото/видеофиксация</div>
+            <div class="feature-item"><span class="feature-check">✓</span>Персональный менеджер</div>
+          </div>
+          <button class="btn-plan" onclick="document.getElementById('contacts').scrollIntoView({behavior:'smooth'})">Выбрать тариф</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOGISTICS TAB -->
+    <div id="tab-logistics" style="display:none" class="reveal">
+      <div class="logistics-grid">
+        <div class="logistics-card">
+          <h3>🚚 Доставка и забор</h3>
+          <div class="logistics-row">
+            <div>
+              <div class="logistics-row-name">Забор с рынков Москвы</div>
+              <div class="logistics-row-sub">Южные ворота, Садовод, ТЯК</div>
+            </div>
+            <div class="logistics-row-price">от 2 200 ₽</div>
+          </div>
+          <div class="logistics-row">
+            <div>
+              <div class="logistics-row-name">Забор по Москве и МО</div>
+              <div class="logistics-row-sub">Адрес поставщика</div>
+            </div>
+            <div class="logistics-row-price">от 1 300 ₽</div>
+          </div>
+          <div class="logistics-row">
+            <div>
+              <div class="logistics-row-name">Доставка до МП (до 1 м³)</div>
+              <div class="logistics-row-sub">Wildberries, Ozon, Яндекс Маркет</div>
+            </div>
+            <div class="logistics-row-price">от 2 200 ₽</div>
+          </div>
+          <div class="logistics-row">
+            <div>
+              <div class="logistics-row-name">Доставка до МП (1–2 м³)</div>
+              <div class="logistics-row-sub">Паллет + стретч-плёнка</div>
+            </div>
+            <div class="logistics-row-price">от 4 900 ₽</div>
+          </div>
+          <div class="logistics-row">
+            <div>
+              <div class="logistics-row-name">Доставка 2+ паллетов</div>
+              <div class="logistics-row-sub">Крупный объём</div>
+            </div>
+            <div class="logistics-row-price">Договорная</div>
+          </div>
+          <div class="logistics-row">
+            <div>
+              <div class="logistics-row-name">Формирование паллета</div>
+              <div class="logistics-row-sub">Деревянный + сборка + стретч</div>
+            </div>
+            <div class="logistics-row-price">от 1 000 ₽</div>
+          </div>
+        </div>
+        <div class="logistics-card">
+          <h3>📦 Упаковочные материалы</h3>
+          <div class="logistics-row">
+            <div><div class="logistics-row-name">ВПП пакет (материал заказчика)</div></div>
+            <div class="logistics-row-price">от 3 ₽</div>
+          </div>
+          <div class="logistics-row">
+            <div><div class="logistics-row-name">ВПП пакет (материал включён)</div></div>
+            <div class="logistics-row-price">от 8 ₽</div>
+          </div>
+          <div class="logistics-row">
+            <div><div class="logistics-row-name">БОПП пакет</div></div>
+            <div class="logistics-row-price">от 4 ₽</div>
+          </div>
+          <div class="logistics-row">
+            <div><div class="logistics-row-name">Пупырчатая плёнка</div></div>
+            <div class="logistics-row-price">от 5 ₽</div>
+          </div>
+          <div class="logistics-row">
+            <div><div class="logistics-row-name">Пупырка + пакет</div></div>
+            <div class="logistics-row-price">от 9 ₽</div>
+          </div>
+          <div class="logistics-row">
+            <div><div class="logistics-row-name">Курьерский пакет</div></div>
+            <div class="logistics-row-price">от 6 ₽</div>
+          </div>
+          <div class="logistics-row">
+            <div><div class="logistics-row-name">Картонная коробка (самосборная)</div></div>
+            <div class="logistics-row-price">от 15 ₽</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXTRA TAB -->
+    <div id="tab-extra" style="display:none" class="reveal">
+      <div class="logistics-grid">
+        <div class="logistics-card">
+          <h3>🏷️ Маркировка</h3>
+          <div class="logistics-row">
+            <div><div class="logistics-row-name">Маркировка одинарная (4 ₽)</div><div class="logistics-row-sub">от 1 000 шт.</div></div>
+            <div class="logistics-row-price">4 ₽/шт.</div>
+          </div>
+          <div class="logistics-row">
+            <div><div class="logistics-row-name">Маркировка одинарная</div><div class="logistics-row-sub">от 500 шт.</div></div>
+            <div class="logistics-row-price">5 ₽/шт.</div>
+          </div>
+          <div class="logistics-row">
+            <div><div class="logistics-row-name">Маркировка двойная (8 ₽)</div><div class="logistics-row-sub">от 1 000 шт.</div></div>
+            <div class="logistics-row-price">8 ₽/шт.</div>
+          </div>
+          <div class="logistics-row">
+            <div><div class="logistics-row-name">Доп. наклейка</div><div class="logistics-row-sub">Страна, состав, и др.</div></div>
+            <div class="logistics-row-price">от 2 ₽/шт.</div>
+          </div>
+        </div>
+        <div class="logistics-card">
+          <h3>⚙️ Прочие услуги</h3>
+          <div class="logistics-row">
+            <div><div class="logistics-row-name">Приёмка товара</div></div>
+            <div class="logistics-row-price">включено</div>
+          </div>
+          <div class="logistics-row">
+            <div><div class="logistics-row-name">Идентификация</div><div class="logistics-row-sub">Сверка с артикулом</div></div>
+            <div class="logistics-row-price">от 2 ₽/шт.</div>
+          </div>
+          <div class="logistics-row">
+            <div><div class="logistics-row-name">Фото/видеофиксация при приёмке</div></div>
+            <div class="logistics-row-price">от 3 ₽/шт.</div>
+          </div>
+          <div class="logistics-row">
+            <div><div class="logistics-row-name">Персональный менеджер</div></div>
+            <div class="logistics-row-price">Премиум</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CALCULATOR -->
+<section class="section" id="calculator" style="background:var(--bg2);padding:80px 0">
+  <div class="container">
+    <div class="section-header reveal" style="text-align:center;margin-bottom:36px">
+      <div class="section-tag">Калькулятор стоимости</div>
+      <h2 class="section-title">Рассчитайте примерную стоимость<br>фулфилмента для вашей партии</h2>
+    </div>
+    <div class="calc-wrapper reveal">
+      <div class="calc-grid">
+        <div>
+          <div class="calc-form-title">Параметры партии</div>
+          <div class="form-group">
+            <label class="form-label">Тариф</label>
+            <select class="form-select" id="calcTariff" onchange="calcUpdate()">
+              <option value="econom">Эконом</option>
+              <option value="optimal" selected>Оптимальный</option>
+              <option value="standart">Стандарт</option>
+              <option value="premium">Премиум</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Количество товаров (шт.)</label>
+            <input class="form-input" id="calcQty" type="number" min="1" value="500" oninput="calcUpdate()" placeholder="500">
+          </div>
+          <div class="form-group" id="markingGroup">
+            <label class="form-label">Маркировка</label>
+            <select class="form-select" id="calcMarking" onchange="calcUpdate()">
+              <option value="none">Без маркировки</option>
+              <option value="single">Одинарная (4 ₽)</option>
+              <option value="double">Двойная (8 ₽)</option>
+            </select>
+          </div>
+          <div class="form-group" id="packagingGroup">
+            <label class="form-label">Тип упаковки</label>
+            <select class="form-select" id="calcPackaging" onchange="calcUpdate()">
+              <option value="none">Без упаковки</option>
+              <option value="vpp">ВПП пакет (материал заказчика) — 3 ₽</option>
+              <option value="vpp_mat">ВПП пакет (материал включён) — 8 ₽</option>
+              <option value="bopp">БОПП пакет — 4 ₽</option>
+              <option value="bubble">Пупырчатая плёнка — 5 ₽</option>
+              <option value="bubble_bag">Пупырка + пакет — 9 ₽</option>
+              <option value="courier">Курьерский пакет — 6 ₽</option>
+              <option value="box">Картонная коробка — 15 ₽</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Доставка до маркетплейса</label>
+            <select class="form-select" id="calcDelivery" onchange="calcUpdate()">
+              <option value="none">Без доставки</option>
+              <option value="small">До 1 м³ — 2 200 ₽</option>
+              <option value="pallet">Паллет + стретч — 4 900 ₽</option>
+              <option value="custom">Договорная</option>
+            </select>
+          </div>
+          <div class="promo-banner">
+            <div class="promo-icon">🎁</div>
+            <div class="promo-text">
+              <strong>Получите бесплатную таблицу расчёта прибыли!</strong>
+              Оставьте заявку — пришлём шаблон расчёта прибыли для маркетплейса на ваш email.
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="calc-result" id="calcResult">
+            <div class="calc-result-title">Ваш расчёт</div>
+            <div id="calcLines"></div>
+            <div class="calc-total">
+              <span class="calc-total-label">Итого:</span>
+              <span class="calc-total-value" id="calcTotal">0 ₽</span>
+            </div>
+            <button class="calc-cta" onclick="document.getElementById('contacts').scrollIntoView({behavior:'smooth'})">Оставить заявку</button>
+            <div class="calc-share">
+              <a id="calcWaBtn" href="#" target="_blank" class="calc-share-btn calc-share-wa">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                Написать в WhatsApp
+              </a>
+              <a id="calcTgBtn" href="#" target="_blank" class="calc-share-btn calc-share-tg">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                Написать в Telegram
+              </a>
+            </div>
+            <div class="calc-note">Расчёт приблизительный — точная цена после консультации.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section" id="faq">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-tag">FAQ</div>
+      <h2 class="section-title">Острые вопросы —<br>честные ответы</h2>
+      <p class="section-desc">Вопросы, которые задают перед тем как доверить логистику. Отвечаем без воды.</p>
+    </div>
+    <div class="faq-list reveal">
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Кто отвечает рублём, если из-за вашей ошибки маркетплейс выписал штраф?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">Мы. Если штраф от WB, Ozon или Яндекс Маркет получен из-за нашей ошибки — неверная маркировка, пересорт, нарушение упаковки — компенсируем его в полном объёме. Это прописано в договоре. Именно поэтому мы сканируем каждый код и ведём фото/видео при приёмке: при спорной ситуации запись однозначно показывает, на чьей стороне ошибка.</div>
+        </div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Как я узнаю, что вы приняли именно столько товара, сколько я отправил?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">При приёмке пересчитываем каждую единицу вручную и ведём фото/видеофиксацию всего процесса. Вы получаете акт приёмки с точным количеством по каждому артикулу в день поступления. Если выявлен недовоз, бой или пересорт — присылаем фото проблемных позиций и согласовываем решение до начала обработки. Никаких «приняли на глаз».</div>
+        </div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          У меня небольшие партии и быстрый оборот — мне это вообще выгодно?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">Да. Минимальный объём — от 1 единицы, фиксированной абонплаты нет. Хранение оплачивается только за фактически занятое место и только за те дни, что товар находился на складе. Приёмка и отгрузка день в день означает, что товар не простаивает — деньги не замораживаются в логистике. Для мелких партий подходит полочное хранение: вы не платите за пустой паллет.</div>
+        </div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Вы работаете с хрупким и крупногабаритным товаром (КГТ)?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">Да. Хрупкие позиции упаковываем в трёхслойную воздушно-пузырчатую плёнку с фиксацией углов и маркировкой «Хрупкое». КГТ храним на паллетных местах и формируем под них отдельные поставки с учётом габаритных требований маркетплейса. Тип товара учитывается в калькуляторе — вы сразу видите итоговую стоимость без сюрпризов.</div>
+        </div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Что нужно от меня, чтобы начать, и как быстро вы подключитесь?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">Три вещи: данные продавца для доступа к ЛК маркетплейса, реквизиты для договора, информация о товаре. Менеджер связывается в течение часа после заявки — в тот же день согласуем условия и подпишем договор. Первую партию можем принять уже на следующий рабочий день. Поставки на WB, Ozon и Яндекс Маркет формируем и подаём за вас — вам остаётся только продавать.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section class="contact-section" id="contacts" style="background:var(--bg2)">
+  <div class="container">
+    <div class="contact-grid">
+      <div class="contact-info reveal">
+        <div class="section-tag">Контакты</div>
+        <h2>Остались вопросы?</h2>
+        <p>Оставьте заявку, и наш менеджер свяжется с вами в течение часа для расчёта стоимости и консультации.</p>
+        <div class="contact-items">
+          <div class="contact-item">
+            <div class="contact-item-icon">📞</div>
+            <div>
+              <div class="contact-item-label">Телефон</div>
+              <a href="tel:+79032277377" class="contact-item-value">+7 (903) 227-73-77</a>
+            </div>
+          </div>
+          <div class="contact-item">
+            <div class="contact-item-icon">✉️</div>
+            <div>
+              <div class="contact-item-label">Email</div>
+              <a href="mailto:info@fulfilment-go.ru" class="contact-item-value">info@fulfilment-go.ru</a>
+            </div>
+          </div>
+          <div class="contact-item">
+            <div class="contact-item-icon">📍</div>
+            <div>
+              <div class="contact-item-label">Адрес</div>
+              <div class="contact-item-value">Москва, склад в МО</div>
+            </div>
+          </div>
+        </div>
+        <div class="social-links">
+          <a href="https://wa.me/79032277377" class="social-btn social-wa" target="_blank">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            WhatsApp
+          </a>
+          <a href="https://t.me/gopackfulfilment" class="social-btn social-tg" target="_blank">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+            Telegram
+          </a>
+        </div>
+      </div>
+      <div class="contact-form reveal">
+        <h3>Оставить заявку</h3>
+        <form onsubmit="submitForm(event)">
+          <div class="form-group">
+            <label class="form-label">Ваше имя</label>
+            <input class="contact-input" type="text" placeholder="Иван Иванов" required id="formName">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Телефон</label>
+            <input class="contact-input" type="tel" placeholder="+7 (___) ___-__-__" required id="formPhone" oninput="formatPhone(this)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Маркетплейсы</label>
+            <input class="contact-input" type="text" placeholder="Напр. Wildberries, Ozon" id="formMp">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Комментарий (опционально)</label>
+            <textarea class="contact-textarea" placeholder="Объём партии, особенности товара..." id="formComment"></textarea>
+          </div>
+          <button type="submit" class="contact-submit">Отправить заявку</button>
+          <div class="contact-agree">Нажимая кнопку, вы соглашаетесь с <a href="#">политикой конфиденциальности</a>.</div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <div class="navbar-logo" style="margin-bottom:0">
+          <div class="navbar-logo-icon">G</div>
+          GoPack<span style="color:var(--red)">.</span>
+        </div>
+        <p>Умный фулфилмент для маркетплейсов. Приёмка, упаковка, маркировка и доставка до склада Wildberries, Ozon и Яндекс Маркет.</p>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <h4>Услуги</h4>
+          <a href="#services">Приёмка и пересчёт</a>
+          <a href="#services">Упаковка и маркировка</a>
+          <a href="#services">Доставка до МП</a>
+          <a href="#services">Забор с рынков</a>
+        </div>
+        <div class="footer-col">
+          <h4>Компания</h4>
+          <a href="#pricing">Цены</a>
+          <a href="#calculator">Калькулятор</a>
+          <a href="#faq">FAQ</a>
+          <a href="#contacts">Контакты</a>
+        </div>
+        <div class="footer-col">
+          <h4>Маркетплейсы</h4>
+          <a href="#contacts">Wildberries</a>
+          <a href="#contacts">Ozon</a>
+          <a href="#contacts">Яндекс Маркет</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2024 GoPack Fulfilment. gopackfulfilment.ru</span>
+      <a href="#" style="color:var(--text3)">Политика конфиденциальности</a>
+    </div>
+  </div>
+</footer>
+
+<!-- SUCCESS MODAL -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-icon">✅</div>
+    <h3>Спасибо за заявку!</h3>
+    <p>Мы уже получили вашу заявку и скоро её обработаем. Менеджер свяжется с вами в течение часа.</p>
+    <button class="modal-close" onclick="document.getElementById('modal').classList.remove('open')">Закрыть</button>
+  </div>
+</div>
+
+<script>
+// ======== MOBILE MENU ========
+const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+const mobileNav = document.getElementById('mobileNav');
+mobileMenuBtn.addEventListener('click', () => mobileNav.classList.toggle('open'));
+function closeMobile() { mobileNav.classList.remove('open'); }
+
+// ======== PRICING TABS ========
+function showPricingTab(tab, btn) {
+  ['tariffs','logistics','extra'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = 'none';
+  });
+  document.querySelectorAll('.pricing-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+tab).style.display = 'block';
+  btn.classList.add('active');
+}
+
+// ======== FAQ ========
+function toggleFaq(btn) {
+  const item = btn.parentElement;
+  const wasOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+  if (!wasOpen) item.classList.add('open');
+}
+
+// ======== CALCULATOR ========
+const tariffPrices = {
+  econom:  { 1:25, 100:21, 250:17, 500:13, 1000:9 },
+  optimal: { 1:29, 100:25, 250:21, 500:17, 1000:13 },
+  standart:{ 1:33, 100:29, 250:25, 500:21, 1000:17 },
+  premium: { 1:45, 100:42, 250:36, 500:30, 1000:25 }
+};
+const markingPrices = { none:0, single:4, double:8 };
+const packagingPrices = { none:0, vpp:3, vpp_mat:8, bopp:4, bubble:5, bubble_bag:9, courier:6, box:15 };
+const deliveryPrices = { none:0, small:2200, pallet:4900, custom:0 };
+
+function getTariffPrice(tariff, qty) {
+  const p = tariffPrices[tariff];
+  if (qty >= 1000) return p[1000];
+  if (qty >= 500) return p[500];
+  if (qty >= 250) return p[250];
+  if (qty >= 100) return p[100];
+  return p[1];
+}
+
+function calcUpdate() {
+  const tariff = document.getElementById('calcTariff').value;
+  const qty = parseInt(document.getElementById('calcQty').value) || 0;
+  const markingVal = document.getElementById('calcMarking').value;
+  const packVal = document.getElementById('calcPackaging').value;
+  const delivVal = document.getElementById('calcDelivery').value;
+
+  // Hide marking/packaging if included in tariff
+  const markingGroup = document.getElementById('markingGroup');
+  const packagingGroup = document.getElementById('packagingGroup');
+
+  let markingIncluded = false;
+  let packIncluded = false;
+  if (tariff === 'optimal') { markingIncluded = true; }
+  if (tariff === 'standart') { markingIncluded = true; }
+  if (tariff === 'premium') { markingIncluded = true; packIncluded = true; }
+
+  const tariffPricePerUnit = getTariffPrice(tariff, qty);
+  const tariffTotal = tariffPricePerUnit * qty;
+
+  let markingExtra = 0;
+  let markingLabel = 'не нужна';
+  if (!markingIncluded) {
+    markingExtra = markingPrices[markingVal] * qty;
+    if (markingVal === 'single') markingLabel = 'одинарная';
+    else if (markingVal === 'double') markingLabel = 'двойная';
+  } else {
+    markingLabel = 'включена в тариф';
+  }
+
+  let packExtra = 0;
+  let packLabel = '';
+  if (!packIncluded) {
+    packExtra = packagingPrices[packVal] * qty;
+    if (packVal === 'none') packLabel = 'без упаковки';
+    else if (packVal === 'vpp') packLabel = 'ВПП пакет';
+    else if (packVal === 'vpp_mat') packLabel = 'ВПП пакет (вкл.)';
+    else if (packVal === 'bopp') packLabel = 'БОПП пакет';
+    else if (packVal === 'bubble') packLabel = 'Пупырчатая плёнка';
+    else if (packVal === 'bubble_bag') packLabel = 'Пупырка + пакет';
+    else if (packVal === 'courier') packLabel = 'Курьерский пакет';
+    else if (packVal === 'box') packLabel = 'Картонная коробка';
+  } else {
+    packLabel = 'включена в тариф';
+  }
+
+  const delivTotal = deliveryPrices[delivVal];
+  let delivLabel = 'не нужна';
+  if (delivVal === 'small') delivLabel = 'до 1 м³';
+  else if (delivVal === 'pallet') delivLabel = 'паллет';
+  else if (delivVal === 'custom') delivLabel = 'договорная';
+
+  const total = tariffTotal + markingExtra + packExtra + delivTotal;
+
+  const tariffNames = { econom:'Эконом', optimal:'Оптимальный', standart:'Стандарт', premium:'Премиум' };
+
+  let linesHtml = `
+    <div class="calc-line"><span>Тариф «${tariffNames[tariff]}»</span><span>${tariffPricePerUnit} ₽ × ${qty.toLocaleString('ru')} = ${tariffTotal.toLocaleString('ru')} ₽</span></div>
+    <div class="calc-line"><span>Доп. маркировка</span><span>${markingIncluded ? markingLabel : (markingExtra > 0 ? markingExtra.toLocaleString('ru')+' ₽' : markingLabel)}</span></div>
+    <div class="calc-line"><span>Упаковка</span><span>${packIncluded ? 'включена в тариф' : (packExtra > 0 ? packExtra.toLocaleString('ru')+' ₽' : 'без упаковки')}</span></div>
+    <div class="calc-line"><span>Доставка</span><span>${delivVal === 'custom' ? 'Договорная' : (delivTotal > 0 ? delivTotal.toLocaleString('ru')+' ₽' : delivLabel)}</span></div>
+  `;
+
+  document.getElementById('calcLines').innerHTML = linesHtml;
+
+  const totalStr = (delivVal === 'custom' ? '≈ ' : '') + total.toLocaleString('ru') + ' ₽';
+  document.getElementById('calcTotal').textContent = totalStr;
+
+  // Формируем оффер для мессенджеров
+  const packNamesRu = { none:'без упаковки', vpp:'ВПП пакет (материал заказчика)', vpp_mat:'ВПП пакет (материал включён)', bopp:'БОПП пакет', bubble:'Пупырчатая плёнка', bubble_bag:'Пупырка + пакет', courier:'Курьерский пакет', box:'Картонная коробка' };
+  const markNamesRu = { none:'не нужна', single:'одинарная', double:'двойная' };
+  const delivNamesRu = { none:'без доставки', small:'до 1 м³', pallet:'паллет + стретч', custom:'договорная' };
+
+  const offerText =
+    `Здравствуйте! Я рассчитал стоимость фулфилмента в GoPack:\n\n` +
+    `📦 Тариф: ${tariffNames[tariff]}\n` +
+    `🔢 Количество: ${qty.toLocaleString('ru')} шт.\n` +
+    `🏷 Маркировка: ${markingIncluded ? 'включена в тариф' : markNamesRu[markingVal]}\n` +
+    `📫 Упаковка: ${packIncluded ? 'включена в тариф' : packNamesRu[packVal]}\n` +
+    `🚚 Доставка: ${delivNamesRu[delivVal]}\n\n` +
+    `💰 Итого: ~${totalStr}\n\n` +
+    `Хочу уточнить детали и начать сотрудничество.`;
+
+  const waUrl = `https://wa.me/79686200250?text=${encodeURIComponent(offerText)}`;
+  const tgUrl = `https://t.me/flowandswag?text=${encodeURIComponent(offerText)}`;
+
+  document.getElementById('calcWaBtn').href = waUrl;
+  document.getElementById('calcTgBtn').href = tgUrl;
+}
+
+// ======== TELEGRAM BOT ========
+const TG_TOKEN = '8365014668:AAGV-0A8Nct_CEp5TxqQsoSoLFRciqP7aIo';
+
+async function getTgChatId() {
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/getUpdates?limit=1&offset=-1`);
+    const d = await r.json();
+    if (d.ok && d.result.length > 0) {
+      const upd = d.result[0];
+      return upd.message?.chat?.id || upd.channel_post?.chat?.id || null;
+    }
+  } catch(e) {}
+  return null;
+}
+
+async function sendTgMessage(text) {
+  const chatId = await getTgChatId();
+  if (!chatId) return false;
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' })
+    });
+    const d = await r.json();
+    return d.ok;
+  } catch(e) { return false; }
+}
+
+// ======== FORM ========
+function formatPhone(input) {
+  let v = input.value.replace(/\D/g, '');
+  if (v.startsWith('8')) v = '7' + v.slice(1);
+  if (v.startsWith('7')) {
+    let f = '+7';
+    if (v.length > 1) f += ' (' + v.slice(1, 4);
+    if (v.length > 4) f += ') ' + v.slice(4, 7);
+    if (v.length > 7) f += '-' + v.slice(7, 9);
+    if (v.length > 9) f += '-' + v.slice(9, 11);
+    input.value = f;
+  }
+}
+
+async function submitForm(e) {
+  e.preventDefault();
+  const name    = document.getElementById('formName').value;
+  const phone   = document.getElementById('formPhone').value;
+  const mp      = document.getElementById('formMp').value;
+  const comment = document.getElementById('formComment').value;
+
+  const text =
+    `📬 <b>Новая заявка с сайта GoPack</b>\n\n` +
+    `👤 Имя: ${name}\n` +
+    `📞 Телефон: ${phone}\n` +
+    (mp      ? `🛒 Маркетплейсы: ${mp}\n` : '') +
+    (comment ? `💬 Комментарий: ${comment}\n` : '') +
+    `\n🌐 gopackfulfilment.ru`;
+
+  const submitBtn = e.target.querySelector('.contact-submit');
+  submitBtn.textContent = 'Отправляем...';
+  submitBtn.disabled = true;
+
+  await sendTgMessage(text);
+
+  submitBtn.textContent = 'Отправить заявку';
+  submitBtn.disabled = false;
+  document.getElementById('modal').classList.add('open');
+  e.target.reset();
+}
+
+function closeModal(e) {
+  if (e.target.id === 'modal') document.getElementById('modal').classList.remove('open');
+}
+
+// ======== SPOTLIGHT CARDS ========
+document.querySelectorAll('.spotlight-card').forEach(card => {
+  card.addEventListener('mousemove', e => {
+    const r = card.getBoundingClientRect();
+    card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+    card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+  });
+});
+
+// ======== COUNT-UP ANIMATION ========
+function countUp(el) {
+  const target = parseFloat(el.dataset.count);
+  const suffix = el.dataset.suffix || '';
+  const dec = target % 1 !== 0 ? 1 : 0;
+  const duration = 1400;
+  const step = 16;
+  const steps = duration / step;
+  let current = 0;
+  const inc = target / steps;
+  const timer = setInterval(() => {
+    current = Math.min(current + inc, target);
+    el.textContent = current.toFixed(dec) + suffix;
+    if (current >= target) clearInterval(timer);
+  }, step);
+}
+
+// ======== SCROLL REVEAL ========
+const reveals = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      e.target.querySelectorAll('[data-count]').forEach(countUp);
+    }
+  });
+}, { threshold: 0.08 });
+reveals.forEach(r => observer.observe(r));
+
+// ======== THEME TOGGLE ========
+const themeToggle = document.getElementById('themeToggle');
+const root = document.documentElement;
+
+function applyTheme(theme) {
+  root.setAttribute('data-theme', theme);
+  themeToggle.textContent = theme === 'light' ? '🌙' : '☀️';
+  localStorage.setItem('theme', theme);
+}
+
+themeToggle.addEventListener('click', () => {
+  const current = root.getAttribute('data-theme');
+  applyTheme(current === 'light' ? 'dark' : 'light');
+});
+
+// Restore saved theme or use system preference
+const saved = localStorage.getItem('theme');
+applyTheme(saved || 'light');
+
+// ======== INIT ========
+calcUpdate();
+</script>
+</body>
+</html>
