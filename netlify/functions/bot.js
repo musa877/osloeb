@@ -454,6 +454,15 @@ exports.handler = async (event) => {
         }
       }
 
+      // Секретная команда 🌙
+      if (cmd === '/tungtungsahur') {
+        await tg('sendMessage', {
+          chat_id: chatId,
+          text: 'привет любимая ❤️'
+        });
+        return { statusCode: 200, body: 'ok' };
+      }
+
       // Команды
       if (cmd === '/start' || cmd === '/calc') {
         const step = buildStep({ step: 'm' });
