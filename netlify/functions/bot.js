@@ -1,11 +1,11 @@
-// Telegram-бот: интерактивный калькулятор фулфилмента GoPack.
-// Пошаговый опрос с inline-клавиатурой. Состояние храним в callback_data,
-// БД не нужна — каждый клик несёт всё накопленное состояние.
+// Telegram-бот GoPack: интерактивный калькулятор + сбор контактов.
+// Stateless: всё состояние едет в callback_data и в скрытом маркере
+// внутри текста force_reply-сообщений.
 
-const TOKEN         = process.env.BOT_TOKEN;
-const MANAGER_CHAT  = process.env.MANAGER_CHAT_ID || process.env.CHAT_ID;
+const TOKEN        = process.env.BOT_TOKEN;
+const MANAGER_CHAT = process.env.MANAGER_CHAT_ID || process.env.CHAT_ID;
 
-// Справочники
+// ──────────────── Справочники ────────────────
 const mpNames    = { w:'Wildberries', o:'Ozon', y:'Яндекс Маркет' };
 const tariffNames= { e:'Эконом', o:'Оптимальный', s:'Стандарт', p:'Премиум' };
 const markNames  = { n:'не нужна', '1':'одинарная (+4 ₽/шт)', '2':'двойная (+8 ₽/шт)' };
@@ -48,39 +48,77 @@ function compute(s) {
   };
 }
 
-// Кодирование/декодирование состояния в callback_data (формат "S|m|t|q|l|p|d|step")
+// ──────────────── Состояние ────────────────
+// Формат: S|m|t|q|l|p|d|step|phone
 function enc(s, step) {
-  return ['S', s.m||'_', s.t||'_', s.q==null?'_':s.q, s.l||'_', s.p||'_', s.d||'_', step].join('|');
+  return ['S', s.m||'_', s.t||'_', s.q==null?'_':s.q, s.l||'_', s.p||'_', s.d||'_', step, s.phone||'_'].join('|');
 }
 function parse(data) {
   const a = data.split('|');
   return {
-    m: a[1]==='_' ? null : a[1],
-    t: a[2]==='_' ? null : a[2],
-    q: a[3]==='_' ? null : parseInt(a[3]),
-    l: a[4]==='_' ? null : a[4],
-    p: a[5]==='_' ? null : a[5],
-    d: a[6]==='_' ? null : a[6],
-    step: a[7]
+    m:     a[1]==='_' ? null : a[1],
+    t:     a[2]==='_' ? null : a[2],
+    q:     a[3]==='_' ? null : parseInt(a[3]),
+    l:     a[4]==='_' ? null : a[4],
+    p:     a[5]==='_' ? null : a[5],
+    d:     a[6]==='_' ? null : a[6],
+    step:  a[7],
+    phone: (!a[8] || a[8]==='_') ? null : a[8]
   };
 }
 
-// Какой шаг идёт после текущего (учёт пропусков по тарифу)
+// ──────────────── Навигация ────────────────
 function nextAfter(s, cur) {
   if (cur === 'm') return 't';
   if (cur === 't') return 'q';
   if (cur === 'q') {
-    if (s.t === 'e') return 'l';     // только эконом спрашивает маркировку
-    if (s.t === 'p') return 'd';     // премиум пропускает и маркировку, и упаковку
-    return 'p';                       // опт/стандарт — пропускают маркировку, спрашивают упаковку
+    if (s.t === 'e') return 'l';
+    if (s.t === 'p') return 'd';
+    return 'p';
   }
   if (cur === 'l') return s.t === 'p' ? 'd' : 'p';
   if (cur === 'p') return 'd';
   if (cur === 'd') return 'done';
 }
 
-const resetBtn = [{ text: '🔄 Начать заново', callback_data: enc({}, 'm') }];
+function backFrom(s, cur) {
+  if (cur === 't')    return { ...s, m:null, step:'m' };
+  if (cur === 'q')    return { ...s, t:null, step:'t' };
+  if (cur === 'l')    return { ...s, q:null, step:'q' };
+  if (cur === 'p') {
+    if (s.t === 'e')  return { ...s, l:null, step:'l' };
+    return                    { ...s, q:null, step:'q' };
+  }
+  if (cur === 'd') {
+    if (s.t === 'p')  return { ...s, q:null, step:'q' };
+    return                    { ...s, p:null, step:'p' };
+  }
+  if (cur === 'done') return { ...s, d:null, step:'d' };
+  return null;
+}
 
+function navRow(s, cur) {
+  const back = backFrom(s, cur);
+  if (!back) return [{ text: '🔄 Начать заново', callback_data: enc({}, 'm') }];
+  return [
+    { text: '⬅️ Назад',  callback_data: enc(back, back.step) },
+    { text: '🔄 Заново', callback_data: enc({}, 'm') }
+  ];
+}
+
+// ──────────────── Телефон ────────────────
+function normalizePhone(raw) {
+  let d = String(raw || '').replace(/\D/g, '');
+  if (d.length === 10 && d[0] === '9') d = '7' + d;
+  if (d.length === 11 && d[0] === '8') d = '7' + d.slice(1);
+  if (d.length === 11 && d[0] === '7') return d;
+  return null;
+}
+function formatPhone(d) {
+  return `+${d[0]} (${d.slice(1,4)}) ${d.slice(4,7)}-${d.slice(7,9)}-${d.slice(9,11)}`;
+}
+
+// ──────────────── Рендер шагов ────────────────
 function buildStep(s) {
   switch (s.step) {
     case 'm':
@@ -100,7 +138,7 @@ function buildStep(s) {
           [{ text: '🔥 Оптимальный — от 13 ₽/шт',  callback_data: enc({...s, t:'o'}, 'q') }],
           [{ text: 'Стандарт — от 17 ₽/шт',        callback_data: enc({...s, t:'s'}, 'q') }],
           [{ text: 'Премиум — от 25 ₽/шт',         callback_data: enc({...s, t:'p'}, 'q') }],
-          resetBtn
+          navRow(s, 't')
         ]
       };
     case 'q': {
@@ -110,7 +148,7 @@ function buildStep(s) {
         callback_data: enc({...s, q}, nextAfter({...s, q}, 'q'))
       })));
       rows.push([{ text: '✏️ Ввести точное количество', callback_data: enc(s, 'qask') }]);
-      rows.push(resetBtn);
+      rows.push(navRow(s, 'q'));
       return {
         text: `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]}\n\nСколько <b>единиц товара</b>?\n\nВыберите вариант или введите своё число.`,
         keyboard: rows
@@ -123,7 +161,7 @@ function buildStep(s) {
           [{ text: 'Не нужна',             callback_data: enc({...s, l:'n'}, nextAfter(s, 'l')) }],
           [{ text: 'Одинарная (+4 ₽/шт)', callback_data: enc({...s, l:'1'}, nextAfter(s, 'l')) }],
           [{ text: 'Двойная (+8 ₽/шт)',   callback_data: enc({...s, l:'2'}, nextAfter(s, 'l')) }],
-          resetBtn
+          navRow(s, 'l')
         ]
       };
     case 'p':
@@ -142,7 +180,7 @@ function buildStep(s) {
             { text: 'Курьерский (+6 ₽)', callback_data: enc({...s, p:'k'}, 'd') },
             { text: 'Коробка (+15 ₽)',   callback_data: enc({...s, p:'x'}, 'd') }
           ],
-          resetBtn
+          navRow(s, 'p')
         ]
       };
     case 'd':
@@ -157,7 +195,7 @@ function buildStep(s) {
             { text: 'Паллет (+4 900 ₽)',  callback_data: enc({...s, d:'p'}, 'done') },
             { text: 'Договорная',           callback_data: enc({...s, d:'c'}, 'done') }
           ],
-          resetBtn
+          navRow(s, 'd')
         ]
       };
     case 'done': {
@@ -174,18 +212,18 @@ function buildStep(s) {
           `📫 Упаковка: ${pLabel}\n` +
           `🚚 Доставка: ${delivNames[s.d]}\n\n` +
           `💰 <b>Итого: ${c.totalStr}</b>\n\n` +
-          'Нажмите кнопку — менеджер свяжется в течение часа для уточнения деталей и оформления договора.',
+          'Нажмите «Отправить менеджеру» — попрошу телефон, и наш специалист свяжется с вами для уточнения деталей.',
         keyboard: [
-          [{ text: '📤 Отправить менеджеру', callback_data: enc(s, 'send') }],
-          [{ text: '🔄 Пересчитать',          callback_data: enc({}, 'm') }]
+          [{ text: '📤 Отправить менеджеру', callback_data: enc(s, 'phoneask') }],
+          navRow(s, 'done')
         ]
       };
     }
     case 'sent':
       return {
         text:
-          '✅ <b>Готово! Расчёт отправлен менеджеру.</b>\n\n' +
-          'Менеджер свяжется с вами в Telegram в течение часа.\n\n' +
+          '✅ <b>Готово! Заявка отправлена менеджеру.</b>\n\n' +
+          'Менеджер свяжется с вами по указанному телефону в течение часа.\n\n' +
           'Хотите рассчитать ещё вариант?',
         keyboard: [
           [{ text: '🔄 Новый расчёт', callback_data: enc({}, 'm') }]
@@ -194,6 +232,7 @@ function buildStep(s) {
   }
 }
 
+// ──────────────── Telegram API ────────────────
 async function tg(method, params) {
   const r = await fetch('https://api.telegram.org/bot' + TOKEN + '/' + method, {
     method: 'POST',
@@ -203,6 +242,57 @@ async function tg(method, params) {
   return r.json();
 }
 
+// Промпт с force_reply и скрытым state-маркером
+async function askWithForceReply(chatId, header, prompt, state, placeholder) {
+  return tg('sendMessage', {
+    chat_id: chatId,
+    text:
+      (header ? header + '\n\n' : '') +
+      prompt + '\n\n' +
+      '<code>STATE:' + enc(state, state.step) + '</code>',
+    parse_mode: 'HTML',
+    reply_markup: {
+      force_reply: true,
+      input_field_placeholder: placeholder || ''
+    }
+  });
+}
+
+// Отправка заявки менеджеру + подтверждение пользователю
+async function sendToManager(chatId, msgId, s, comment, user) {
+  const c = compute(s);
+  const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'без имени';
+  const link = user.username
+    ? '@' + user.username
+    : `<a href="tg://user?id=${user.id}">${fullName}</a>`;
+  const lLabel = s.t === 'e' ? (markNames[s.l] || 'не указано') : 'включена в тариф';
+  const pLabel = s.t === 'p' ? 'включена в тариф' : (packNames[s.p] || 'не указано');
+
+  await tg('sendMessage', {
+    chat_id: MANAGER_CHAT, parse_mode: 'HTML',
+    text:
+      '🧮 <b>Заявка из Telegram-бота</b>\n\n' +
+      `👤 Клиент: ${fullName}\n` +
+      `📞 Телефон: <code>${formatPhone(s.phone)}</code>\n` +
+      `💬 Telegram: ${link}\n` +
+      (comment ? `📝 Комментарий: ${comment}\n` : '') +
+      `\n🛒 Маркетплейс: ${mpNames[s.m]}\n` +
+      `📦 Тариф: ${tariffNames[s.t]}\n` +
+      `🔢 Количество: ${s.q.toLocaleString('ru')} шт.\n` +
+      `🏷 Маркировка: ${lLabel}\n` +
+      `📫 Упаковка: ${pLabel}\n` +
+      `🚚 Доставка: ${delivNames[s.d]}\n\n` +
+      `💰 <b>Итого: ${c.totalStr}</b>`
+  });
+
+  const sent = buildStep({ step: 'sent' });
+  await tg('sendMessage', {
+    chat_id: chatId, text: sent.text, parse_mode: 'HTML',
+    reply_markup: { inline_keyboard: sent.keyboard }
+  });
+}
+
+// ──────────────── Webhook handler ────────────────
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 200, body: 'ok' };
   if (!TOKEN || !MANAGER_CHAT)     return { statusCode: 200, body: 'not configured' };
@@ -212,51 +302,92 @@ exports.handler = async (event) => {
   catch { return { statusCode: 200, body: 'bad json' }; }
 
   try {
-    // 1) Команды и текстовые сообщения
+    // ────── 1) ТЕКСТОВЫЕ СООБЩЕНИЯ ──────
     if (upd.message && upd.message.text) {
       const text   = upd.message.text.trim();
       const chatId = upd.message.chat.id;
       const cmd    = text.split(/\s+/)[0].split('@')[0];
       const reply  = upd.message.reply_to_message;
 
-      // Ответ на запрос точного количества (force_reply от бота)
+      // Ответ на force_reply от бота (число количества, телефон или комментарий)
       if (reply && reply.text) {
         const m = reply.text.match(/STATE:(S\|[^\s<]+)/);
         if (m) {
           const s = parse(m[1]);
+          const lc = text.toLowerCase();
+
+          // Универсальная команда «назад» в любом force_reply
+          if (lc === 'назад' || lc === 'back') {
+            // Возвращаем на шаг ПЕРЕД force_reply:
+            // qresp → q, phoneresp → done, commentresp → перепроcить телефон
+            if (s.step === 'qresp') {
+              const st = buildStep({ ...s, step: 'q' });
+              await tg('sendMessage', { chat_id: chatId, text: st.text, parse_mode: 'HTML',
+                reply_markup: { inline_keyboard: st.keyboard } });
+            } else if (s.step === 'phoneresp') {
+              const st = buildStep({ ...s, step: 'done' });
+              await tg('sendMessage', { chat_id: chatId, text: st.text, parse_mode: 'HTML',
+                reply_markup: { inline_keyboard: st.keyboard } });
+            } else if (s.step === 'commentresp') {
+              await askWithForceReply(chatId, null,
+                '📞 Введите ваш <b>телефон</b> для связи:',
+                { ...s, phone: null, step: 'phoneresp' },
+                '+7 (___) ___-__-__');
+            }
+            return { statusCode: 200, body: 'ok' };
+          }
+
+          // ── Ответ: точное количество ──
           if (s.step === 'qresp') {
-            // парсим число — допускаем пробелы, запятые и точки как разделители
-            const numStr = text.replace(/[\s.,' ]/g, '');
+            const numStr = text.replace(/[\s.,' ]/g, '');
             const q = parseInt(numStr);
             if (!q || isNaN(q) || q < 1 || q > 100000) {
-              await tg('sendMessage', {
-                chat_id: chatId,
-                text:
-                  '⚠️ Нужно число от 1 до 100 000. Попробуйте ещё раз — например: 750\n\n' +
-                  '<code>STATE:' + enc(s, 'qresp') + '</code>',
-                parse_mode: 'HTML',
-                reply_markup: {
-                  force_reply: true,
-                  input_field_placeholder: 'Например: 750'
-                }
-              });
+              await askWithForceReply(chatId, null,
+                '⚠️ Нужно число от 1 до 100 000. Попробуйте ещё раз — например: 750',
+                s, 'Например: 750');
               return { statusCode: 200, body: 'ok' };
             }
-            // валидное число — продвигаем состояние
             const newS = { ...s, q };
             newS.step = nextAfter(newS, 'q');
             const step = buildStep(newS);
             await tg('sendMessage', {
-              chat_id: chatId,
-              text: step.text,
-              parse_mode: 'HTML',
+              chat_id: chatId, text: step.text, parse_mode: 'HTML',
               reply_markup: { inline_keyboard: step.keyboard }
             });
+            return { statusCode: 200, body: 'ok' };
+          }
+
+          // ── Ответ: телефон ──
+          if (s.step === 'phoneresp') {
+            const phoneDigits = normalizePhone(text);
+            if (!phoneDigits) {
+              await askWithForceReply(chatId, null,
+                '⚠️ Не похоже на телефон. Введите номер в формате +7 (999) 123-45-67 или просто 9991234567.\n' +
+                '(или отправьте «назад», чтобы вернуться)',
+                s, '+7 (___) ___-__-__');
+              return { statusCode: 200, body: 'ok' };
+            }
+            // Спрашиваем комментарий
+            await askWithForceReply(chatId,
+              `📞 Телефон: <code>${formatPhone(phoneDigits)}</code>`,
+              '📝 <b>Комментарий</b> (объём партии, особенности товара) — необязательно.\n\n' +
+              'Напишите пару слов ИЛИ отправьте <code>-</code> чтобы пропустить.',
+              { ...s, phone: phoneDigits, step: 'commentresp' },
+              'Пара слов о товаре или «-»');
+            return { statusCode: 200, body: 'ok' };
+          }
+
+          // ── Ответ: комментарий ──
+          if (s.step === 'commentresp') {
+            const skipWords = ['-', '—', '–', 'нет', 'no', 'skip', 'пропустить', 'пропуск', 'нету', 'без'];
+            const comment = skipWords.includes(lc) ? '' : text;
+            await sendToManager(chatId, null, s, comment, upd.message.from);
             return { statusCode: 200, body: 'ok' };
           }
         }
       }
 
+      // Команды
       if (cmd === '/start' || cmd === '/calc') {
         const step = buildStep({ step: 'm' });
         await tg('sendMessage', {
@@ -276,7 +407,7 @@ exports.handler = async (event) => {
       }
     }
 
-    // 2) Нажатия на inline-кнопки
+    // ────── 2) НАЖАТИЯ INLINE-КНОПОК ──────
     else if (upd.callback_query) {
       const cq    = upd.callback_query;
       const data  = cq.data || '';
@@ -288,63 +419,34 @@ exports.handler = async (event) => {
       if (data.startsWith('S|')) {
         const s = parse(data);
 
-        // Запрос точного количества — отправляем prompt с force_reply
+        // Запрос точного количества
         if (s.step === 'qask') {
-          await tg('sendMessage', {
-            chat_id: chatId,
-            text:
-              `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]}\n\n` +
-              '✏️ Введите <b>количество товара</b> числом (от 1 до 100 000):\n\n' +
-              '<code>STATE:' + enc(s, 'qresp') + '</code>',
-            parse_mode: 'HTML',
-            reply_markup: {
-              force_reply: true,
-              input_field_placeholder: 'Например: 750'
-            }
-          });
+          await askWithForceReply(chatId,
+            `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]}`,
+            '✏️ Введите <b>количество товара</b> числом (от 1 до 100 000):\n' +
+            '(или отправьте «назад», чтобы вернуться)',
+            { ...s, step: 'qresp' },
+            'Например: 750');
           return { statusCode: 200, body: 'ok' };
         }
 
-        // Финальная отправка менеджеру
-        if (s.step === 'send') {
-          const c = compute(s);
-          const u = cq.from;
-          const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ') || 'без имени';
-          const link = u.username
-            ? '@' + u.username
-            : `<a href="tg://user?id=${u.id}">${fullName}</a>`;
-          const lLabel = s.t === 'e' ? (markNames[s.l] || 'не указано') : 'включена в тариф';
-          const pLabel = s.t === 'p' ? 'включена в тариф' : (packNames[s.p] || 'не указано');
-
-          await tg('sendMessage', {
-            chat_id: MANAGER_CHAT, parse_mode: 'HTML',
-            text:
-              '🧮 <b>Расчёт через Telegram-бота</b>\n\n' +
-              `👤 Клиент: ${fullName}\n` +
-              `📩 Связаться: ${link}\n\n` +
-              `🛒 Маркетплейс: ${mpNames[s.m]}\n` +
-              `📦 Тариф: ${tariffNames[s.t]}\n` +
-              `🔢 Количество: ${s.q.toLocaleString('ru')} шт.\n` +
-              `🏷 Маркировка: ${lLabel}\n` +
-              `📫 Упаковка: ${pLabel}\n` +
-              `🚚 Доставка: ${delivNames[s.d]}\n\n` +
-              `💰 <b>Итого: ${c.totalStr}</b>`
-          });
-
-          const sent = buildStep({ step: 'sent' });
-          await tg('editMessageText', {
-            chat_id: chatId, message_id: msgId, text: sent.text, parse_mode: 'HTML',
-            reply_markup: { inline_keyboard: sent.keyboard }
-          });
+        // Запрос телефона (новое имя 'phoneask') и старое 'send' — для совместимости
+        if (s.step === 'phoneask' || s.step === 'send') {
+          await askWithForceReply(chatId,
+            null,
+            '📞 Введите ваш <b>телефон</b> для связи:\n' +
+            '(или отправьте «назад», чтобы вернуться к расчёту)',
+            { ...s, phone: null, step: 'phoneresp' },
+            '+7 (___) ___-__-__');
+          return { statusCode: 200, body: 'ok' };
         }
-        // Обычные переходы между шагами — редактируем то же сообщение
-        else {
-          const step = buildStep(s);
-          await tg('editMessageText', {
-            chat_id: chatId, message_id: msgId, text: step.text, parse_mode: 'HTML',
-            reply_markup: { inline_keyboard: step.keyboard }
-          });
-        }
+
+        // Обычные переходы — редактируем то же сообщение
+        const step = buildStep(s);
+        await tg('editMessageText', {
+          chat_id: chatId, message_id: msgId, text: step.text, parse_mode: 'HTML',
+          reply_markup: { inline_keyboard: step.keyboard }
+        });
       }
     }
   } catch (e) {
