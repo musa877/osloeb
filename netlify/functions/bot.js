@@ -89,12 +89,15 @@ function parse(data) {
 }
 
 // ──────────────── Серверное хранение pending-state ────────────────
-function store() { return getStore('bot-pending'); }
+// Strong consistency обязательна: запись (на клике кнопки) и чтение
+// (на следующем сообщении пользователя) идут разными вызовами функции.
+let lastError = null;
+function store() { return getStore({ name: 'bot-pending', consistency: 'strong' }); }
 
 async function setPending(chatId, data) {
   try {
     await store().setJSON('chat:' + chatId, { ...data, ts: Date.now() });
-  } catch (e) {}
+  } catch (e) { lastError = 'setPending: ' + e.message; }
 }
 async function getPending(chatId) {
   try {
@@ -105,10 +108,10 @@ async function getPending(chatId) {
       return null;
     }
     return data;
-  } catch (e) { return null; }
+  } catch (e) { lastError = 'getPending: ' + e.message; return null; }
 }
 async function clearPending(chatId) {
-  try { await store().delete('chat:' + chatId); } catch (e) {}
+  try { await store().delete('chat:' + chatId); } catch (e) { lastError = 'clearPending: ' + e.message; }
 }
 
 // ──────────────── Навигация ────────────────
@@ -400,6 +403,30 @@ exports.handler = async (event) => {
       // Секретная команда 🌙
       if (cmd === '/tungtungsahur') {
         await tg('sendMessage', { chat_id: chatId, text: 'привет любимая ❤️' });
+        return { statusCode: 200, body: 'ok' };
+      }
+
+      // Диагностика хранилища: write → read → verify
+      if (cmd === '/debug') {
+        lastError = null;
+        const testKey = 'test-' + Date.now();
+        let report = '🔧 <b>Диагностика хранилища</b>\n\n';
+        try {
+          await store().setJSON('chat:' + chatId + ':' + testKey, { hello: 'world', ts: Date.now() });
+          report += '✅ setJSON ok\n';
+          const got = await store().get('chat:' + chatId + ':' + testKey, { type: 'json' });
+          report += got && got.hello === 'world'
+            ? '✅ get ok — данные совпали\n'
+            : '❌ get вернул не то: ' + JSON.stringify(got) + '\n';
+          await store().delete('chat:' + chatId + ':' + testKey).catch(() => {});
+          report += '✅ delete ok\n';
+        } catch (e) {
+          report += '❌ Ошибка: ' + e.message + '\n';
+        }
+        if (lastError) report += '\n⚠️ lastError: ' + lastError;
+        const pending = await getPending(chatId);
+        report += '\n\n📦 pending для вашего chat_id: ' + (pending ? JSON.stringify(pending) : 'нет');
+        await tg('sendMessage', { chat_id: chatId, text: report, parse_mode: 'HTML' });
         return { statusCode: 200, body: 'ok' };
       }
 
