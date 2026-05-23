@@ -1,9 +1,12 @@
 // Telegram-бот GoPack: интерактивный калькулятор + сбор контактов.
-// Stateless: всё состояние едет в callback_data и в скрытом маркере
-// внутри текста force_reply-сообщений.
+// Состояние диалога (ожидание текстового ответа) хранится в Netlify Blobs
+// по chat_id, поэтому работает независимо от reply_to_message.
+
+const { getStore } = require('@netlify/blobs');
 
 const TOKEN        = process.env.BOT_TOKEN;
 const MANAGER_CHAT = process.env.MANAGER_CHAT_ID || process.env.CHAT_ID;
+const PENDING_TTL_MS = 30 * 60 * 1000; // 30 минут
 
 // ──────────────── Справочники ────────────────
 const mpNames    = { w:'Wildberries', o:'Ozon', y:'Яндекс Маркет' };
@@ -12,7 +15,6 @@ const markNames  = { n:'не нужна', '1':'одинарная (+4 ₽/шт)'
 const packNames  = { n:'без упаковки', v:'ВПП пакет', b:'БОПП', u:'Пупырка', k:'Курьерский', x:'Картонная коробка' };
 const delivNames = { n:'не нужна', s:'до 1 м³', p:'паллет + стретч', c:'договорная' };
 
-// Цены (зеркало логики калькулятора сайта)
 const tariffPrices = {
   e: { 1:25, 100:21, 250:17, 500:13, 1000:9  },
   o: { 1:29, 100:25, 250:21, 500:17, 1000:13 },
@@ -39,7 +41,6 @@ function compute(s) {
   if (s.t === 'e' && s.l && s.l !== 'n') markExtra = markPrices[s.l] * s.q;
   let packExtra = 0;
   if (s.t !== 'p' && s.p && s.p !== 'n') {
-    // s.p может быть одним символом или несколькими (несколько типов упаковки)
     for (const ch of s.p) packExtra += (packPrices[ch] || 0);
     packExtra *= s.q;
   }
@@ -52,16 +53,14 @@ function compute(s) {
   };
 }
 
-// Текст про упаковку (поддерживает несколько типов)
 function packLabel(s) {
-  if (s.t === 'p')               return 'включена в тариф';
-  if (!s.p)                       return 'не указано';
-  if (s.p === 'n')                return packNames.n;
-  if (s.p.length === 1)           return packNames[s.p];
+  if (s.t === 'p')         return 'включена в тариф';
+  if (!s.p)                 return 'не указано';
+  if (s.p === 'n')          return packNames.n;
+  if (s.p.length === 1)     return packNames[s.p];
   return [...s.p].map(c => packNames[c]).join(' + ');
 }
 
-// Переключатель упаковки в мульти-режиме (добавляет/убирает символ)
 function togglePack(current, ch) {
   const cur = (!current || current === 'n') ? '' : current;
   if (cur.includes(ch)) {
@@ -71,23 +70,45 @@ function togglePack(current, ch) {
   return cur + ch;
 }
 
-// ──────────────── Состояние ────────────────
-// Формат: S|m|t|q|l|p|d|step|phone
+// ──────────────── Состояние callback_data ────────────────
+// Формат: S|m|t|q|l|p|d|step
 function enc(s, step) {
-  return ['S', s.m||'_', s.t||'_', s.q==null?'_':s.q, s.l||'_', s.p||'_', s.d||'_', step, s.phone||'_'].join('|');
+  return ['S', s.m||'_', s.t||'_', s.q==null?'_':s.q, s.l||'_', s.p||'_', s.d||'_', step].join('|');
 }
 function parse(data) {
   const a = data.split('|');
   return {
-    m:     a[1]==='_' ? null : a[1],
-    t:     a[2]==='_' ? null : a[2],
-    q:     a[3]==='_' ? null : parseInt(a[3]),
-    l:     a[4]==='_' ? null : a[4],
-    p:     a[5]==='_' ? null : a[5],
-    d:     a[6]==='_' ? null : a[6],
-    step:  a[7],
-    phone: (!a[8] || a[8]==='_') ? null : a[8]
+    m:    a[1]==='_' ? null : a[1],
+    t:    a[2]==='_' ? null : a[2],
+    q:    a[3]==='_' ? null : parseInt(a[3]),
+    l:    a[4]==='_' ? null : a[4],
+    p:    a[5]==='_' ? null : a[5],
+    d:    a[6]==='_' ? null : a[6],
+    step: a[7]
   };
+}
+
+// ──────────────── Серверное хранение pending-state ────────────────
+function store() { return getStore('bot-pending'); }
+
+async function setPending(chatId, data) {
+  try {
+    await store().setJSON('chat:' + chatId, { ...data, ts: Date.now() });
+  } catch (e) {}
+}
+async function getPending(chatId) {
+  try {
+    const data = await store().get('chat:' + chatId, { type: 'json' });
+    if (!data) return null;
+    if (Date.now() - (data.ts || 0) > PENDING_TTL_MS) {
+      await store().delete('chat:' + chatId).catch(() => {});
+      return null;
+    }
+    return data;
+  } catch (e) { return null; }
+}
+async function clearPending(chatId) {
+  try { await store().delete('chat:' + chatId); } catch (e) {}
 }
 
 // ──────────────── Навигация ────────────────
@@ -115,7 +136,6 @@ function backFrom(s, cur) {
   if (cur === 'pm')   return { ...s, p:null, step:'p' };
   if (cur === 'd') {
     if (s.t === 'p')  return { ...s, q:null, step:'q' };
-    // если в упаковке несколько типов — возвращаем в мульти-режим
     if (s.p && s.p.length > 1) return { ...s, step:'pm' };
     return                    { ...s, p:null, step:'p' };
   }
@@ -309,15 +329,17 @@ async function tg(method, params) {
   return r.json();
 }
 
-// Промпт с force_reply и скрытым state-маркером
-async function askWithForceReply(chatId, header, prompt, state, placeholder) {
-  return tg('sendMessage', {
-    chat_id: chatId,
-    text:
-      (header ? header + '\n\n' : '') +
-      prompt + '\n\n' +
-      '<code>STATE:' + enc(state, state.step) + '</code>',
-    parse_mode: 'HTML',
+async function sendStep(chatId, s) {
+  const step = buildStep(s);
+  await tg('sendMessage', {
+    chat_id: chatId, text: step.text, parse_mode: 'HTML',
+    reply_markup: { inline_keyboard: step.keyboard }
+  });
+}
+
+async function sendPrompt(chatId, text, placeholder) {
+  await tg('sendMessage', {
+    chat_id: chatId, text, parse_mode: 'HTML',
     reply_markup: {
       force_reply: true,
       input_field_placeholder: placeholder || ''
@@ -325,8 +347,7 @@ async function askWithForceReply(chatId, header, prompt, state, placeholder) {
   });
 }
 
-// Отправка заявки менеджеру + подтверждение пользователю
-async function sendToManager(chatId, msgId, s, comment, user) {
+async function sendToManager(chatId, s, comment, user) {
   const c = compute(s);
   const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'без имени';
   const link = user.username
@@ -369,121 +390,110 @@ exports.handler = async (event) => {
   catch { return { statusCode: 200, body: 'bad json' }; }
 
   try {
-    // ────── 1) ТЕКСТОВЫЕ СООБЩЕНИЯ ──────
+    // ────── ТЕКСТОВЫЕ СООБЩЕНИЯ ──────
     if (upd.message && upd.message.text) {
       const text   = upd.message.text.trim();
       const chatId = upd.message.chat.id;
       const cmd    = text.split(/\s+/)[0].split('@')[0];
-      const reply  = upd.message.reply_to_message;
-
-      // Ответ на force_reply от бота (число количества, телефон или комментарий)
-      if (reply && reply.text) {
-        const m = reply.text.match(/STATE:(S\|[^\s<]+)/);
-        if (m) {
-          const s = parse(m[1]);
-          const lc = text.toLowerCase();
-
-          // Универсальная команда «назад» в любом force_reply
-          if (lc === 'назад' || lc === 'back') {
-            // Возвращаем на шаг ПЕРЕД force_reply:
-            // qresp → q, phoneresp → done, commentresp → перепроcить телефон
-            if (s.step === 'qresp') {
-              const st = buildStep({ ...s, step: 'q' });
-              await tg('sendMessage', { chat_id: chatId, text: st.text, parse_mode: 'HTML',
-                reply_markup: { inline_keyboard: st.keyboard } });
-            } else if (s.step === 'phoneresp') {
-              const st = buildStep({ ...s, step: 'done' });
-              await tg('sendMessage', { chat_id: chatId, text: st.text, parse_mode: 'HTML',
-                reply_markup: { inline_keyboard: st.keyboard } });
-            } else if (s.step === 'commentresp') {
-              await askWithForceReply(chatId, null,
-                '📞 Введите ваш <b>телефон</b> для связи:',
-                { ...s, phone: null, step: 'phoneresp' },
-                '+7 (___) ___-__-__');
-            }
-            return { statusCode: 200, body: 'ok' };
-          }
-
-          // ── Ответ: точное количество ──
-          if (s.step === 'qresp') {
-            const numStr = text.replace(/[\s.,' ]/g, '');
-            const q = parseInt(numStr);
-            if (!q || isNaN(q) || q < 1 || q > 100000) {
-              await askWithForceReply(chatId, null,
-                '⚠️ Нужно число от 1 до 100 000. Попробуйте ещё раз — например: 750',
-                s, 'Например: 750');
-              return { statusCode: 200, body: 'ok' };
-            }
-            const newS = { ...s, q };
-            newS.step = nextAfter(newS, 'q');
-            const step = buildStep(newS);
-            await tg('sendMessage', {
-              chat_id: chatId, text: step.text, parse_mode: 'HTML',
-              reply_markup: { inline_keyboard: step.keyboard }
-            });
-            return { statusCode: 200, body: 'ok' };
-          }
-
-          // ── Ответ: телефон ──
-          if (s.step === 'phoneresp') {
-            const phoneDigits = normalizePhone(text);
-            if (!phoneDigits) {
-              await askWithForceReply(chatId, null,
-                '⚠️ Не похоже на телефон. Введите номер в формате +7 (999) 123-45-67 или просто 9991234567.\n' +
-                '(или отправьте «назад», чтобы вернуться)',
-                s, '+7 (___) ___-__-__');
-              return { statusCode: 200, body: 'ok' };
-            }
-            // Спрашиваем комментарий
-            await askWithForceReply(chatId,
-              `📞 Телефон: <code>${formatPhone(phoneDigits)}</code>`,
-              '📝 <b>Комментарий</b> (объём партии, особенности товара) — необязательно.\n\n' +
-              'Напишите пару слов ИЛИ отправьте <code>-</code> чтобы пропустить.',
-              { ...s, phone: phoneDigits, step: 'commentresp' },
-              'Пара слов о товаре или «-»');
-            return { statusCode: 200, body: 'ok' };
-          }
-
-          // ── Ответ: комментарий ──
-          if (s.step === 'commentresp') {
-            const skipWords = ['-', '—', '–', 'нет', 'no', 'skip', 'пропустить', 'пропуск', 'нету', 'без'];
-            const comment = skipWords.includes(lc) ? '' : text;
-            await sendToManager(chatId, null, s, comment, upd.message.from);
-            return { statusCode: 200, body: 'ok' };
-          }
-        }
-      }
+      const lc     = text.toLowerCase();
 
       // Секретная команда 🌙
       if (cmd === '/tungtungsahur') {
-        await tg('sendMessage', {
-          chat_id: chatId,
-          text: 'привет любимая ❤️'
-        });
+        await tg('sendMessage', { chat_id: chatId, text: 'привет любимая ❤️' });
         return { statusCode: 200, body: 'ok' };
       }
 
-      // Команды
+      // Команды старта — всегда сбрасывают pending
       if (cmd === '/start' || cmd === '/calc') {
-        const step = buildStep({ step: 'm' });
-        await tg('sendMessage', {
-          chat_id: chatId, text: step.text, parse_mode: 'HTML',
-          reply_markup: { inline_keyboard: step.keyboard }
-        });
-      } else if (cmd === '/help') {
+        await clearPending(chatId);
+        await sendStep(chatId, { step: 'm' });
+        return { statusCode: 200, body: 'ok' };
+      }
+      if (cmd === '/help') {
         await tg('sendMessage', {
           chat_id: chatId,
           text: 'GoPack — фулфилмент для маркетплейсов.\n\n/calc — рассчитать стоимость\n/start — начать заново'
         });
-      } else {
-        await tg('sendMessage', {
-          chat_id: chatId,
-          text: '👋 Чтобы рассчитать стоимость фулфилмента, отправьте /calc'
-        });
+        return { statusCode: 200, body: 'ok' };
       }
+
+      // Проверяем pending-state — ожидает ли бот сейчас текстовый ответ?
+      const pending = await getPending(chatId);
+
+      // Универсальная команда «назад» в любом текстовом шаге
+      if (pending && (lc === 'назад' || lc === 'back')) {
+        if (pending.step === 'qresp') {
+          await clearPending(chatId);
+          await sendStep(chatId, { ...pending.s, step: 'q' });
+        } else if (pending.step === 'phoneresp') {
+          await clearPending(chatId);
+          await sendStep(chatId, { ...pending.s, step: 'done' });
+        } else if (pending.step === 'commentresp') {
+          // Назад к телефону
+          await setPending(chatId, { step: 'phoneresp', s: { ...pending.s, phone: null } });
+          await sendPrompt(chatId,
+            '📞 Введите ваш <b>телефон</b> для связи:\n<i>(или отправьте «назад», чтобы вернуться к расчёту)</i>',
+            '+7 (___) ___-__-__');
+        }
+        return { statusCode: 200, body: 'ok' };
+      }
+
+      if (pending) {
+        // Ввод точного количества
+        if (pending.step === 'qresp') {
+          const numStr = text.replace(/[\s.,' ]/g, '');
+          const q = parseInt(numStr);
+          if (!q || isNaN(q) || q < 1 || q > 100000) {
+            await sendPrompt(chatId,
+              '⚠️ Нужно число от 1 до 100 000. Попробуйте ещё раз — например: 750',
+              'Например: 750');
+            return { statusCode: 200, body: 'ok' };
+          }
+          const newS = { ...pending.s, q };
+          newS.step = nextAfter(newS, 'q');
+          await clearPending(chatId);
+          await sendStep(chatId, newS);
+          return { statusCode: 200, body: 'ok' };
+        }
+
+        // Ввод телефона
+        if (pending.step === 'phoneresp') {
+          const phoneDigits = normalizePhone(text);
+          if (!phoneDigits) {
+            await sendPrompt(chatId,
+              '⚠️ Не похоже на телефон. Введите номер в формате +7 (999) 123-45-67 или просто 9991234567.\n<i>(или отправьте «назад», чтобы вернуться)</i>',
+              '+7 (___) ___-__-__');
+            return { statusCode: 200, body: 'ok' };
+          }
+          const newS = { ...pending.s, phone: phoneDigits };
+          await setPending(chatId, { step: 'commentresp', s: newS });
+          await sendPrompt(chatId,
+            `📞 Телефон: <code>${formatPhone(phoneDigits)}</code>\n\n` +
+            '📝 <b>Комментарий</b> (объём партии, особенности товара) — необязательно.\n\n' +
+            'Напишите пару слов ИЛИ отправьте «<b>-</b>» чтобы пропустить.',
+            'Пара слов о товаре или «-»');
+          return { statusCode: 200, body: 'ok' };
+        }
+
+        // Ввод комментария
+        if (pending.step === 'commentresp') {
+          const skipWords = ['-', '—', '–', 'нет', 'no', 'skip', 'пропустить', 'пропуск', 'нету', 'без'];
+          const comment = skipWords.includes(lc) ? '' : text;
+          await clearPending(chatId);
+          await sendToManager(chatId, pending.s, comment, upd.message.from);
+          return { statusCode: 200, body: 'ok' };
+        }
+      }
+
+      // Нет ни команды, ни pending — мягкая подсказка
+      await tg('sendMessage', {
+        chat_id: chatId,
+        text: '👋 Чтобы рассчитать стоимость фулфилмента, отправьте /calc'
+      });
+      return { statusCode: 200, body: 'ok' };
     }
 
-    // ────── 2) НАЖАТИЯ INLINE-КНОПОК ──────
+    // ────── НАЖАТИЯ INLINE-КНОПОК ──────
     else if (upd.callback_query) {
       const cq    = upd.callback_query;
       const data  = cq.data || '';
@@ -495,29 +505,30 @@ exports.handler = async (event) => {
       if (data.startsWith('S|')) {
         const s = parse(data);
 
+        // Любое нажатие кнопки — отменяем ожидание текстового ответа
+        await clearPending(chatId);
+
         // Запрос точного количества
         if (s.step === 'qask') {
-          await askWithForceReply(chatId,
-            `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]}`,
+          await setPending(chatId, { step: 'qresp', s });
+          await sendPrompt(chatId,
+            `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]}\n\n` +
             '✏️ Введите <b>количество товара</b> числом (от 1 до 100 000):\n' +
-            '(или отправьте «назад», чтобы вернуться)',
-            { ...s, step: 'qresp' },
+            '<i>(или отправьте «назад», чтобы вернуться)</i>',
             'Например: 750');
           return { statusCode: 200, body: 'ok' };
         }
 
-        // Запрос телефона (новое имя 'phoneask') и старое 'send' — для совместимости
+        // Запрос телефона (новое имя 'phoneask' и старое 'send' для совместимости)
         if (s.step === 'phoneask' || s.step === 'send') {
-          await askWithForceReply(chatId,
-            null,
-            '📞 Введите ваш <b>телефон</b> для связи:\n' +
-            '(или отправьте «назад», чтобы вернуться к расчёту)',
-            { ...s, phone: null, step: 'phoneresp' },
+          await setPending(chatId, { step: 'phoneresp', s });
+          await sendPrompt(chatId,
+            '📞 Введите ваш <b>телефон</b> для связи:\n<i>(или отправьте «назад», чтобы вернуться к расчёту)</i>',
             '+7 (___) ___-__-__');
           return { statusCode: 200, body: 'ok' };
         }
 
-        // Обычные переходы — редактируем то же сообщение
+        // Обычные переходы — редактируем сообщение
         const step = buildStep(s);
         await tg('editMessageText', {
           chat_id: chatId, message_id: msgId, text: step.text, parse_mode: 'HTML',
