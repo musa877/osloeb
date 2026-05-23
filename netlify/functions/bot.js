@@ -92,7 +92,17 @@ function parse(data) {
 // Strong consistency обязательна: запись (на клике кнопки) и чтение
 // (на следующем сообщении пользователя) идут разными вызовами функции.
 let lastError = null;
-function store() { return getStore({ name: 'bot-pending', consistency: 'strong' }); }
+function store() {
+  const opts = { name: 'bot-pending', consistency: 'strong' };
+  // Если автодетект не работает, используем явные siteID + token из env
+  const siteID = process.env.SITE_ID || process.env.NETLIFY_SITE_ID;
+  const token  = process.env.NETLIFY_AUTH_TOKEN || process.env.NETLIFY_API_TOKEN;
+  if (siteID && token) {
+    opts.siteID = siteID;
+    opts.token  = token;
+  }
+  return getStore(opts);
+}
 
 async function setPending(chatId, data) {
   try {
@@ -426,6 +436,12 @@ exports.handler = async (event) => {
         if (lastError) report += '\n⚠️ lastError: ' + lastError;
         const pending = await getPending(chatId);
         report += '\n\n📦 pending для вашего chat_id: ' + (pending ? JSON.stringify(pending) : 'нет');
+        report += '\n\n🔍 ENV:\n' +
+          '• SITE_ID: ' + (process.env.SITE_ID ? '✓' : '✗') + '\n' +
+          '• NETLIFY_SITE_ID: ' + (process.env.NETLIFY_SITE_ID ? '✓' : '✗') + '\n' +
+          '• NETLIFY_BLOBS_CONTEXT: ' + (process.env.NETLIFY_BLOBS_CONTEXT ? '✓' : '✗') + '\n' +
+          '• NETLIFY_AUTH_TOKEN: ' + (process.env.NETLIFY_AUTH_TOKEN ? '✓' : '✗') + '\n' +
+          '• DEPLOY_ID: ' + (process.env.DEPLOY_ID ? '✓' : '✗');
         await tg('sendMessage', { chat_id: chatId, text: report, parse_mode: 'HTML' });
         return { statusCode: 200, body: 'ok' };
       }
