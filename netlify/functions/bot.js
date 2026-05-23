@@ -38,7 +38,11 @@ function compute(s) {
   let markExtra = 0;
   if (s.t === 'e' && s.l && s.l !== 'n') markExtra = markPrices[s.l] * s.q;
   let packExtra = 0;
-  if (s.t !== 'p' && s.p && s.p !== 'n') packExtra = packPrices[s.p] * s.q;
+  if (s.t !== 'p' && s.p && s.p !== 'n') {
+    // s.p может быть одним символом или несколькими (несколько типов упаковки)
+    for (const ch of s.p) packExtra += (packPrices[ch] || 0);
+    packExtra *= s.q;
+  }
   const delivExtra = delivPrices[s.d] || 0;
   const total = tariffTotal + markExtra + packExtra + delivExtra;
   const isCustom = s.d === 'c' || s.q >= 5000;
@@ -46,6 +50,25 @@ function compute(s) {
     per, tariffTotal, markExtra, packExtra, delivExtra, total,
     totalStr: (isCustom ? '≈ ' : '') + total.toLocaleString('ru') + ' ₽'
   };
+}
+
+// Текст про упаковку (поддерживает несколько типов)
+function packLabel(s) {
+  if (s.t === 'p')               return 'включена в тариф';
+  if (!s.p)                       return 'не указано';
+  if (s.p === 'n')                return packNames.n;
+  if (s.p.length === 1)           return packNames[s.p];
+  return [...s.p].map(c => packNames[c]).join(' + ');
+}
+
+// Переключатель упаковки в мульти-режиме (добавляет/убирает символ)
+function togglePack(current, ch) {
+  const cur = (!current || current === 'n') ? '' : current;
+  if (cur.includes(ch)) {
+    const next = cur.replace(ch, '');
+    return next || null;
+  }
+  return cur + ch;
 }
 
 // ──────────────── Состояние ────────────────
@@ -89,8 +112,11 @@ function backFrom(s, cur) {
     if (s.t === 'e')  return { ...s, l:null, step:'l' };
     return                    { ...s, q:null, step:'q' };
   }
+  if (cur === 'pm')   return { ...s, p:null, step:'p' };
   if (cur === 'd') {
     if (s.t === 'p')  return { ...s, q:null, step:'q' };
+    // если в упаковке несколько типов — возвращаем в мульти-режим
+    if (s.p && s.p.length > 1) return { ...s, step:'pm' };
     return                    { ...s, p:null, step:'p' };
   }
   if (cur === 'done') return { ...s, d:null, step:'d' };
@@ -180,9 +206,50 @@ function buildStep(s) {
             { text: 'Курьерский (+6 ₽)', callback_data: enc({...s, p:'k'}, 'd') },
             { text: 'Коробка (+15 ₽)',   callback_data: enc({...s, p:'x'}, 'd') }
           ],
+          [{ text: '➕ Несколько типов упаковки', callback_data: enc({...s, p:null}, 'pm') }],
           navRow(s, 'p')
         ]
       };
+    case 'pm': {
+      const current = (s.p && s.p !== 'n') ? s.p : '';
+      const items = [
+        { ch:'v', name:'ВПП (+3 ₽)' },
+        { ch:'b', name:'БОПП (+4 ₽)' },
+        { ch:'u', name:'Пупырка (+5 ₽)' },
+        { ch:'k', name:'Курьерский (+6 ₽)' },
+        { ch:'x', name:'Коробка (+15 ₽)' }
+      ];
+      const rows = [];
+      for (let i = 0; i < items.length; i += 2) {
+        const row = [items[i], items[i+1]].filter(Boolean).map(it => {
+          const selected = current.includes(it.ch);
+          const newP = togglePack(current, it.ch);
+          return {
+            text: (selected ? '✅ ' : '➕ ') + it.name,
+            callback_data: enc({...s, p: newP}, 'pm')
+          };
+        });
+        rows.push(row);
+      }
+      if (current.length > 0) {
+        let sum = 0;
+        for (const ch of current) sum += (packPrices[ch] || 0);
+        rows.push([{
+          text: `✓ Готово (упаковка: +${sum} ₽/шт)`,
+          callback_data: enc(s, 'd')
+        }]);
+      }
+      rows.push(navRow(s, 'pm'));
+      const sel = current ? [...current].map(c => packNames[c]).join(' + ') : 'пока ничего не выбрано';
+      return {
+        text:
+          `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]} · ${s.q} шт.\n\n` +
+          '<b>Несколько типов упаковки</b>\n' +
+          'Клик по варианту — добавить/убрать. Цены складываются.\n\n' +
+          `<i>Выбрано: ${sel}</i>`,
+        keyboard: rows
+      };
+    }
     case 'd':
       return {
         text: `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]} · ${s.q} шт.\n\n<b>Доставка до склада МП</b>?`,
@@ -201,7 +268,7 @@ function buildStep(s) {
     case 'done': {
       const c = compute(s);
       const lLabel = s.t === 'e' ? (markNames[s.l] || 'не указано') : 'включена в тариф';
-      const pLabel = s.t === 'p' ? 'включена в тариф' : (packNames[s.p] || 'не указано');
+      const pLabel = packLabel(s);
       return {
         text:
           '✅ <b>Ваш расчёт готов</b>\n\n' +
@@ -266,7 +333,7 @@ async function sendToManager(chatId, msgId, s, comment, user) {
     ? '@' + user.username
     : `<a href="tg://user?id=${user.id}">${fullName}</a>`;
   const lLabel = s.t === 'e' ? (markNames[s.l] || 'не указано') : 'включена в тариф';
-  const pLabel = s.t === 'p' ? 'включена в тариф' : (packNames[s.p] || 'не указано');
+  const pLabel = packLabel(s);
 
   await tg('sendMessage', {
     chat_id: MANAGER_CHAT, parse_mode: 'HTML',
