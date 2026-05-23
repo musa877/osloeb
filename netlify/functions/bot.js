@@ -104,15 +104,15 @@ function buildStep(s) {
         ]
       };
     case 'q': {
-      const opts = [[100,250],[500,1000],[2000]];
+      const opts = [[100,250],[500,1000],[2000,5000]];
       const rows = opts.map(row => row.map(q => ({
         text: q.toLocaleString('ru') + ' шт.',
         callback_data: enc({...s, q}, nextAfter({...s, q}, 'q'))
       })));
-      rows.push([{ text: '5 000+ шт. (договорная)', callback_data: enc({...s, q:5000}, nextAfter({...s, q:5000}, 'q')) }]);
+      rows.push([{ text: '✏️ Ввести точное количество', callback_data: enc(s, 'qask') }]);
       rows.push(resetBtn);
       return {
-        text: `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]}\n\nСколько <b>единиц товара</b>?`,
+        text: `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]}\n\nСколько <b>единиц товара</b>?\n\nВыберите вариант или введите своё число.`,
         keyboard: rows
       };
     }
@@ -217,6 +217,45 @@ exports.handler = async (event) => {
       const text   = upd.message.text.trim();
       const chatId = upd.message.chat.id;
       const cmd    = text.split(/\s+/)[0].split('@')[0];
+      const reply  = upd.message.reply_to_message;
+
+      // Ответ на запрос точного количества (force_reply от бота)
+      if (reply && reply.text) {
+        const m = reply.text.match(/STATE:(S\|[^\s<]+)/);
+        if (m) {
+          const s = parse(m[1]);
+          if (s.step === 'qresp') {
+            // парсим число — допускаем пробелы, запятые и точки как разделители
+            const numStr = text.replace(/[\s.,' ]/g, '');
+            const q = parseInt(numStr);
+            if (!q || isNaN(q) || q < 1 || q > 100000) {
+              await tg('sendMessage', {
+                chat_id: chatId,
+                text:
+                  '⚠️ Нужно число от 1 до 100 000. Попробуйте ещё раз — например: 750\n\n' +
+                  '<code>STATE:' + enc(s, 'qresp') + '</code>',
+                parse_mode: 'HTML',
+                reply_markup: {
+                  force_reply: true,
+                  input_field_placeholder: 'Например: 750'
+                }
+              });
+              return { statusCode: 200, body: 'ok' };
+            }
+            // валидное число — продвигаем состояние
+            const newS = { ...s, q };
+            newS.step = nextAfter(newS, 'q');
+            const step = buildStep(newS);
+            await tg('sendMessage', {
+              chat_id: chatId,
+              text: step.text,
+              parse_mode: 'HTML',
+              reply_markup: { inline_keyboard: step.keyboard }
+            });
+            return { statusCode: 200, body: 'ok' };
+          }
+        }
+      }
 
       if (cmd === '/start' || cmd === '/calc') {
         const step = buildStep({ step: 'm' });
@@ -248,6 +287,23 @@ exports.handler = async (event) => {
 
       if (data.startsWith('S|')) {
         const s = parse(data);
+
+        // Запрос точного количества — отправляем prompt с force_reply
+        if (s.step === 'qask') {
+          await tg('sendMessage', {
+            chat_id: chatId,
+            text:
+              `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]}\n\n` +
+              '✏️ Введите <b>количество товара</b> числом (от 1 до 100 000):\n\n' +
+              '<code>STATE:' + enc(s, 'qresp') + '</code>',
+            parse_mode: 'HTML',
+            reply_markup: {
+              force_reply: true,
+              input_field_placeholder: 'Например: 750'
+            }
+          });
+          return { statusCode: 200, body: 'ok' };
+        }
 
         // Финальная отправка менеджеру
         if (s.step === 'send') {
