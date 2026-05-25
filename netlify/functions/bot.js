@@ -2,7 +2,7 @@
 // Состояние диалога (ожидание текстового ответа) хранится в Netlify Blobs
 // по chat_id, поэтому работает независимо от reply_to_message.
 
-const { getStore } = require('@netlify/blobs');
+const { getStore, connectLambda } = require('@netlify/blobs');
 
 const TOKEN        = process.env.BOT_TOKEN;
 const MANAGER_CHAT = process.env.MANAGER_CHAT_ID || process.env.CHAT_ID;
@@ -395,6 +395,9 @@ async function sendToManager(chatId, s, comment, user) {
 
 // ──────────────── Webhook handler ────────────────
 exports.handler = async (event) => {
+  // Инициализация Netlify Blobs контекста для Lambda-стиля функций
+  try { connectLambda(event); } catch (e) { lastError = 'connectLambda: ' + e.message; }
+
   if (event.httpMethod !== 'POST') return { statusCode: 200, body: 'ok' };
   if (!TOKEN || !MANAGER_CHAT)     return { statusCode: 200, body: 'not configured' };
 
