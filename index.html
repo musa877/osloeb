@@ -1172,16 +1172,6 @@
                 <option value="sbox6">270×165×50 мм — 40 ₽</option>
                 <option value="sbox7">220×165×100 мм — 48 ₽</option>
               </optgroup>
-              <optgroup label="Картонная коробка">
-                <option value="box1">10×10 трёхслойный — 22 ₽</option>
-                <option value="box2">15×15 трёхслойный — 23 ₽</option>
-                <option value="box3">20×20 двухслойный — 24 ₽</option>
-                <option value="box4">20×20 трёхслойный — 27 ₽</option>
-                <option value="box5">30×30 трёхслойный — 32 ₽</option>
-                <option value="box6">40×40 трёхслойный — 42 ₽</option>
-                <option value="box7">50×50 трёхслойный — 45 ₽</option>
-                <option value="box8">60×50 трёхслойный — 51 ₽</option>
-              </optgroup>
             </select>
           </div>
           <div class="form-group">
@@ -1446,8 +1436,7 @@ const packagingPrices = {
   bopp1:18, bopp2:20, bopp3:20, bopp4:21,
   bub1:15, bub2:30,
   cour1:15, cour2:18, cour3:19, cour4:20, cour5:22, cour6:26, cour7:31, cour8:34,
-  sbox1:15, sbox2:22, sbox3:20, sbox4:26, sbox5:30, sbox6:40, sbox7:48,
-  box1:22, box2:23, box3:24, box4:27, box5:32, box6:42, box7:45, box8:51
+  sbox1:15, sbox2:22, sbox3:20, sbox4:26, sbox5:30, sbox6:40, sbox7:48
 };
 const deliveryPrices = { none:0, small:2200, pallet:4900, custom:0 };
 
@@ -1544,10 +1533,7 @@ function calcUpdate() {
     sbox1:'Коробка самосб. 130×90×40 мм', sbox2:'Коробка самосб. 170×90×50 мм',
     sbox3:'Коробка самосб. 200×100×50 мм', sbox4:'Коробка самосб. 110×110×110 мм',
     sbox5:'Коробка самосб. 170×120×100 мм', sbox6:'Коробка самосб. 270×165×50 мм',
-    sbox7:'Коробка самосб. 220×165×100 мм',
-    box1:'Коробка 10×10 трёхсл.', box2:'Коробка 15×15 трёхсл.', box3:'Коробка 20×20 двухсл.',
-    box4:'Коробка 20×20 трёхсл.', box5:'Коробка 30×30 трёхсл.', box6:'Коробка 40×40 трёхсл.',
-    box7:'Коробка 50×50 трёхсл.', box8:'Коробка 60×50 трёхсл.'
+    sbox7:'Коробка самосб. 220×165×100 мм'
   };
   const markNamesRu = { none:'не нужна', single:'одинарная', double:'двойная' };
   const delivNamesRu = { none:'без доставки', small:'до 1 м³', pallet:'паллет + стретч', custom:'договорная' };
