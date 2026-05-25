@@ -12,7 +12,12 @@ const PENDING_TTL_MS = 30 * 60 * 1000; // 30 минут
 const mpNames    = { w:'Wildberries', o:'Ozon', y:'Яндекс Маркет' };
 const tariffNames= { e:'Эконом', o:'Оптимальный', s:'Стандарт', p:'Премиум' };
 const markNames  = { n:'не нужна', '1':'одинарная (+4 ₽/шт)', '2':'двойная (+8 ₽/шт)' };
-const packNames  = { n:'без упаковки', v:'ВПП пакет', b:'БОПП', u:'Пупырка', k:'Курьерский', x:'Картонная коробка' };
+const packNames  = {
+  n:'без упаковки',
+  v:'ВПП пакет', b:'БОПП', u:'Пупырка', k:'Курьерский',
+  x:'Картонная коробка',
+  A:'Коробка S (15×15×10)', B:'Коробка M (20×20×15)', C:'Коробка L (30×30×20)', D:'Коробка XL (40×30×30)'
+};
 const delivNames = { n:'не нужна', s:'до 1 м³', p:'паллет + стретч', c:'договорная' };
 
 const tariffPrices = {
@@ -22,7 +27,7 @@ const tariffPrices = {
   p: { 1:45, 100:42, 250:36, 500:30, 1000:25 }
 };
 const markPrices  = { '1':4, '2':8 };
-const packPrices  = { v:3, b:4, u:5, k:6, x:15 };
+const packPrices  = { v:3, b:4, u:5, k:6, x:15, A:12, B:18, C:25, D:35 };
 const delivPrices = { s:2200, p:4900 };
 
 function pricePerUnit(t, q) {
@@ -147,8 +152,10 @@ function backFrom(s, cur) {
     return                    { ...s, q:null, step:'q' };
   }
   if (cur === 'pm')   return { ...s, p:null, step:'p' };
+  if (cur === 'pbox') return { ...s, p:null, step:'p' };
   if (cur === 'd') {
     if (s.t === 'p')  return { ...s, q:null, step:'q' };
+    if (s.p && 'ABCD'.includes(s.p)) return { ...s, step:'pbox' };
     if (s.p && s.p.length > 1) return { ...s, step:'pm' };
     return                    { ...s, p:null, step:'p' };
   }
@@ -237,10 +244,21 @@ function buildStep(s) {
           ],
           [
             { text: 'Курьерский (+6 ₽)', callback_data: enc({...s, p:'k'}, 'd') },
-            { text: 'Коробка (+15 ₽)',   callback_data: enc({...s, p:'x'}, 'd') }
+            { text: '📦 Коробка — выбрать размер', callback_data: enc({...s, p:null}, 'pbox') }
           ],
           [{ text: '➕ Несколько типов упаковки', callback_data: enc({...s, p:null}, 'pm') }],
           navRow(s, 'p')
+        ]
+      };
+    case 'pbox':
+      return {
+        text: `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]} · ${s.q} шт.\n\n📦 <b>Выберите размер коробки</b>:`,
+        keyboard: [
+          [{ text: 'S — 15×15×10 см (+12 ₽)', callback_data: enc({...s, p:'A'}, 'd') }],
+          [{ text: 'M — 20×20×15 см (+18 ₽)', callback_data: enc({...s, p:'B'}, 'd') }],
+          [{ text: 'L — 30×30×20 см (+25 ₽)', callback_data: enc({...s, p:'C'}, 'd') }],
+          [{ text: 'XL — 40×30×30 см (+35 ₽)', callback_data: enc({...s, p:'D'}, 'd') }],
+          navRow(s, 'pbox')
         ]
       };
     case 'pm': {
