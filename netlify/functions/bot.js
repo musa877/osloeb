@@ -360,6 +360,34 @@ async function sendPrompt(chatId, text, placeholder) {
   });
 }
 
+// Запрос телефона с кнопкой «Поделиться номером»
+async function sendPhonePrompt(chatId) {
+  await tg('sendMessage', {
+    chat_id: chatId,
+    parse_mode: 'HTML',
+    text:
+      '📞 Нажмите <b>«Поделиться номером»</b> ниже\n' +
+      'или введите телефон вручную\n\n' +
+      '<i>(можно отправить «назад» чтобы вернуться к расчёту)</i>',
+    reply_markup: {
+      keyboard: [
+        [{ text: '📞 Поделиться номером', request_contact: true }]
+      ],
+      resize_keyboard: true,
+      one_time_keyboard: true
+    }
+  });
+}
+
+// Снятие reply-клавиатуры
+async function removeReplyKeyboard(chatId, text) {
+  await tg('sendMessage', {
+    chat_id: chatId,
+    text: text || '⬅️',
+    reply_markup: { remove_keyboard: true }
+  });
+}
+
 async function sendToManager(chatId, s, comment, user) {
   const c = compute(s);
   const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'без имени';
@@ -406,6 +434,28 @@ exports.handler = async (event) => {
   catch { return { statusCode: 200, body: 'bad json' }; }
 
   try {
+    // ────── КОНТАКТ (нажата кнопка «Поделиться номером») ──────
+    if (upd.message && upd.message.contact) {
+      const chatId = upd.message.chat.id;
+      const pending = await getPending(chatId);
+      if (pending && pending.step === 'phoneresp') {
+        const phoneDigits = normalizePhone(upd.message.contact.phone_number);
+        if (phoneDigits) {
+          const newS = { ...pending.s, phone: phoneDigits };
+          await setPending(chatId, { step: 'commentresp', s: newS });
+          await sendPrompt(chatId,
+            `📞 Телефон: <code>${formatPhone(phoneDigits)}</code>\n\n` +
+            '📝 <b>Комментарий</b> (объём партии, особенности товара) — необязательно.\n\n' +
+            'Напишите пару слов ИЛИ отправьте «<b>-</b>» чтобы пропустить.',
+            'Пара слов о товаре или «-»');
+        } else {
+          // некорректный телефон в контакте — просим снова
+          await sendPhonePrompt(chatId);
+        }
+      }
+      return { statusCode: 200, body: 'ok' };
+    }
+
     // ────── ТЕКСТОВЫЕ СООБЩЕНИЯ ──────
     if (upd.message && upd.message.text) {
       const text   = upd.message.text.trim();
@@ -473,13 +523,13 @@ exports.handler = async (event) => {
           await sendStep(chatId, { ...pending.s, step: 'q' });
         } else if (pending.step === 'phoneresp') {
           await clearPending(chatId);
+          // снять reply-клавиатуру с кнопкой «Поделиться номером»
+          await removeReplyKeyboard(chatId, '⬅️ Возврат к расчёту');
           await sendStep(chatId, { ...pending.s, step: 'done' });
         } else if (pending.step === 'commentresp') {
           // Назад к телефону
           await setPending(chatId, { step: 'phoneresp', s: { ...pending.s, phone: null } });
-          await sendPrompt(chatId,
-            '📞 Введите ваш <b>телефон</b> для связи:\n<i>(или отправьте «назад», чтобы вернуться к расчёту)</i>',
-            '+7 (___) ___-__-__');
+          await sendPhonePrompt(chatId);
         }
         return { statusCode: 200, body: 'ok' };
       }
@@ -568,9 +618,7 @@ exports.handler = async (event) => {
         // Запрос телефона (новое имя 'phoneask' и старое 'send' для совместимости)
         if (s.step === 'phoneask' || s.step === 'send') {
           await setPending(chatId, { step: 'phoneresp', s });
-          await sendPrompt(chatId,
-            '📞 Введите ваш <b>телефон</b> для связи:\n<i>(или отправьте «назад», чтобы вернуться к расчёту)</i>',
-            '+7 (___) ___-__-__');
+          await sendPhonePrompt(chatId);
           return { statusCode: 200, body: 'ok' };
         }
 
