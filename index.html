@@ -1163,6 +1163,15 @@
                 <option value="cour7">340×460+40 мм — 31 ₽</option>
                 <option value="cour8">360×500+40 мм — 34 ₽</option>
               </optgroup>
+              <optgroup label="Картонная коробка (самосборная)">
+                <option value="sbox1">130×90×40 мм — 15 ₽</option>
+                <option value="sbox2">170×90×50 мм — 22 ₽</option>
+                <option value="sbox3">200×100×50 мм — 20 ₽</option>
+                <option value="sbox4">110×110×110 мм — 26 ₽</option>
+                <option value="sbox5">170×120×100 мм — 30 ₽</option>
+                <option value="sbox6">270×165×50 мм — 40 ₽</option>
+                <option value="sbox7">220×165×100 мм — 48 ₽</option>
+              </optgroup>
               <optgroup label="Картонная коробка">
                 <option value="box1">10×10 трёхслойный — 22 ₽</option>
                 <option value="box2">15×15 трёхслойный — 23 ₽</option>
@@ -1437,6 +1446,7 @@ const packagingPrices = {
   bopp1:18, bopp2:20, bopp3:20, bopp4:21,
   bub1:15, bub2:30,
   cour1:15, cour2:18, cour3:19, cour4:20, cour5:22, cour6:26, cour7:31, cour8:34,
+  sbox1:15, sbox2:22, sbox3:20, sbox4:26, sbox5:30, sbox6:40, sbox7:48,
   box1:22, box2:23, box3:24, box4:27, box5:32, box6:42, box7:45, box8:51
 };
 const deliveryPrices = { none:0, small:2200, pallet:4900, custom:0 };
@@ -1531,6 +1541,10 @@ function calcUpdate() {
     cour1:'Курьерский 100×150+40 мм', cour2:'Курьерский 150×210+40 мм', cour3:'Курьерский 165×240+40 мм',
     cour4:'Курьерский 190×240+40 мм', cour5:'Курьерский 240×320+40 мм', cour6:'Курьерский 300×400+40 мм',
     cour7:'Курьерский 340×460+40 мм', cour8:'Курьерский 360×500+40 мм',
+    sbox1:'Коробка самосб. 130×90×40 мм', sbox2:'Коробка самосб. 170×90×50 мм',
+    sbox3:'Коробка самосб. 200×100×50 мм', sbox4:'Коробка самосб. 110×110×110 мм',
+    sbox5:'Коробка самосб. 170×120×100 мм', sbox6:'Коробка самосб. 270×165×50 мм',
+    sbox7:'Коробка самосб. 220×165×100 мм',
     box1:'Коробка 10×10 трёхсл.', box2:'Коробка 15×15 трёхсл.', box3:'Коробка 20×20 двухсл.',
     box4:'Коробка 20×20 трёхсл.', box5:'Коробка 30×30 трёхсл.', box6:'Коробка 40×40 трёхсл.',
     box7:'Коробка 50×50 трёхсл.', box8:'Коробка 60×50 трёхсл.'
