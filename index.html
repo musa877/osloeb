@@ -1127,20 +1127,52 @@
             <label class="form-label">Тип упаковки</label>
             <select class="form-select" id="calcPackaging" onchange="calcUpdate()">
               <option value="none">Без упаковки</option>
-              <option value="vpp">ВПП пакет (материал заказчика) — 3 ₽</option>
-              <option value="vpp_mat">ВПП пакет (материал включён) — 8 ₽</option>
-              <option value="bopp">БОПП пакет — 4 ₽</option>
-              <option value="bubble">Пупырчатая плёнка — 5 ₽</option>
-              <option value="bubble_bag">Пупырка + пакет — 9 ₽</option>
-              <option value="courier">Курьерский пакет — 6 ₽</option>
-              <option value="box1">Коробка 10×10 трёхсл. — 22 ₽</option>
-              <option value="box2">Коробка 15×15 трёхсл. — 23 ₽</option>
-              <option value="box3">Коробка 20×20 двухсл. — 24 ₽</option>
-              <option value="box4">Коробка 20×20 трёхсл. — 27 ₽</option>
-              <option value="box5">Коробка 30×30 трёхсл. — 32 ₽</option>
-              <option value="box6">Коробка 40×40 трёхсл. — 42 ₽</option>
-              <option value="box7">Коробка 50×50 трёхсл. — 45 ₽</option>
-              <option value="box8">Коробка 60×50 трёхсл. — 51 ₽</option>
+              <optgroup label="ВПП пакет">
+                <option value="vpp">Материал заказчика — 3 ₽</option>
+                <option value="vpp_mat">Материал включён — 8 ₽</option>
+              </optgroup>
+              <optgroup label="Zip-Lock пакет">
+                <option value="zip1">80×120 мм, 45 мкм — 15 ₽</option>
+                <option value="zip2">100×100 мм, 45 мкм — 15 ₽</option>
+                <option value="zip3">100×150 мм, 45 мкм — 15 ₽</option>
+                <option value="zip4">70×100 мм, 60 мкм — 17 ₽</option>
+                <option value="zip5">150×200 мм, 45 мкм — 17 ₽</option>
+                <option value="zip6">120×180 мм, 60 мкм — 20 ₽</option>
+                <option value="zip7">150×200 мм, 60 мкм — 23 ₽</option>
+                <option value="zip8">180×250 мм, 70 мкм — 30 ₽</option>
+                <option value="zip9">300×400 мм, 45 мкм — 30 ₽</option>
+                <option value="zip10">200×300 мм, 80 мкм — 38 ₽</option>
+              </optgroup>
+              <optgroup label="БОПП пакет">
+                <option value="bopp1">10×8 см — 18 ₽</option>
+                <option value="bopp2">15×12 см — 20 ₽</option>
+                <option value="bopp3">27×12 см — 20 ₽</option>
+                <option value="bopp4">38×15 см — 21 ₽</option>
+              </optgroup>
+              <optgroup label="Пупырчатая плёнка">
+                <option value="bub1">Пупырка — 15 ₽</option>
+                <option value="bub2">Пупырка + пакет — 30 ₽</option>
+              </optgroup>
+              <optgroup label="Курьерский пакет">
+                <option value="cour1">100×150+40 мм — 15 ₽</option>
+                <option value="cour2">150×210+40 мм — 18 ₽</option>
+                <option value="cour3">165×240+40 мм — 19 ₽</option>
+                <option value="cour4">190×240+40 мм — 20 ₽</option>
+                <option value="cour5">240×320+40 мм — 22 ₽</option>
+                <option value="cour6">300×400+40 мм — 26 ₽</option>
+                <option value="cour7">340×460+40 мм — 31 ₽</option>
+                <option value="cour8">360×500+40 мм — 34 ₽</option>
+              </optgroup>
+              <optgroup label="Картонная коробка">
+                <option value="box1">10×10 трёхслойный — 22 ₽</option>
+                <option value="box2">15×15 трёхслойный — 23 ₽</option>
+                <option value="box3">20×20 двухслойный — 24 ₽</option>
+                <option value="box4">20×20 трёхслойный — 27 ₽</option>
+                <option value="box5">30×30 трёхслойный — 32 ₽</option>
+                <option value="box6">40×40 трёхслойный — 42 ₽</option>
+                <option value="box7">50×50 трёхслойный — 45 ₽</option>
+                <option value="box8">60×50 трёхслойный — 51 ₽</option>
+              </optgroup>
             </select>
           </div>
           <div class="form-group">
@@ -1398,7 +1430,15 @@ const tariffPrices = {
   premium: { 1:45, 100:42, 250:36, 500:30, 1000:25 }
 };
 const markingPrices = { none:0, single:4, double:8 };
-const packagingPrices = { none:0, vpp:3, vpp_mat:8, bopp:4, bubble:5, bubble_bag:9, courier:6, box1:22, box2:23, box3:24, box4:27, box5:32, box6:42, box7:45, box8:51 };
+const packagingPrices = {
+  none:0,
+  vpp:3, vpp_mat:8,
+  zip1:15, zip2:15, zip3:15, zip4:17, zip5:17, zip6:20, zip7:23, zip8:30, zip9:30, zip10:38,
+  bopp1:18, bopp2:20, bopp3:20, bopp4:21,
+  bub1:15, bub2:30,
+  cour1:15, cour2:18, cour3:19, cour4:20, cour5:22, cour6:26, cour7:31, cour8:34,
+  box1:22, box2:23, box3:24, box4:27, box5:32, box6:42, box7:45, box8:51
+};
 const deliveryPrices = { none:0, small:2200, pallet:4900, custom:0 };
 
 function getTariffPrice(tariff, qty) {
@@ -1479,7 +1519,22 @@ function calcUpdate() {
   document.getElementById('calcTotal').textContent = totalStr;
 
   // Формируем оффер для мессенджеров
-  const packNamesRu = { none:'без упаковки', vpp:'ВПП пакет (материал заказчика)', vpp_mat:'ВПП пакет (материал включён)', bopp:'БОПП пакет', bubble:'Пупырчатая плёнка', bubble_bag:'Пупырка + пакет', courier:'Курьерский пакет', box1:'Коробка 10×10 трёхсл.', box2:'Коробка 15×15 трёхсл.', box3:'Коробка 20×20 двухсл.', box4:'Коробка 20×20 трёхсл.', box5:'Коробка 30×30 трёхсл.', box6:'Коробка 40×40 трёхсл.', box7:'Коробка 50×50 трёхсл.', box8:'Коробка 60×50 трёхсл.' };
+  const packNamesRu = {
+    none:'без упаковки',
+    vpp:'ВПП пакет (материал заказчика)', vpp_mat:'ВПП пакет (материал включён)',
+    zip1:'Zip-Lock 80×120 мм, 45 мкм', zip2:'Zip-Lock 100×100 мм, 45 мкм', zip3:'Zip-Lock 100×150 мм, 45 мкм',
+    zip4:'Zip-Lock 70×100 мм, 60 мкм', zip5:'Zip-Lock 150×200 мм, 45 мкм', zip6:'Zip-Lock 120×180 мм, 60 мкм',
+    zip7:'Zip-Lock 150×200 мм, 60 мкм', zip8:'Zip-Lock 180×250 мм, 70 мкм', zip9:'Zip-Lock 300×400 мм, 45 мкм',
+    zip10:'Zip-Lock 200×300 мм, 80 мкм',
+    bopp1:'БОПП 10×8 см', bopp2:'БОПП 15×12 см', bopp3:'БОПП 27×12 см', bopp4:'БОПП 38×15 см',
+    bub1:'Пупырка', bub2:'Пупырка + пакет',
+    cour1:'Курьерский 100×150+40 мм', cour2:'Курьерский 150×210+40 мм', cour3:'Курьерский 165×240+40 мм',
+    cour4:'Курьерский 190×240+40 мм', cour5:'Курьерский 240×320+40 мм', cour6:'Курьерский 300×400+40 мм',
+    cour7:'Курьерский 340×460+40 мм', cour8:'Курьерский 360×500+40 мм',
+    box1:'Коробка 10×10 трёхсл.', box2:'Коробка 15×15 трёхсл.', box3:'Коробка 20×20 двухсл.',
+    box4:'Коробка 20×20 трёхсл.', box5:'Коробка 30×30 трёхсл.', box6:'Коробка 40×40 трёхсл.',
+    box7:'Коробка 50×50 трёхсл.', box8:'Коробка 60×50 трёхсл.'
+  };
   const markNamesRu = { none:'не нужна', single:'одинарная', double:'двойная' };
   const delivNamesRu = { none:'без доставки', small:'до 1 м³', pallet:'паллет + стретч', custom:'договорная' };
 

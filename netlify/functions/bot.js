@@ -1,32 +1,64 @@
 // Telegram-бот GoPack: интерактивный калькулятор + сбор контактов.
-// Состояние диалога (ожидание текстового ответа) хранится в Netlify Blobs
-// по chat_id, поэтому работает независимо от reply_to_message.
+// Состояние диалога хранится в Netlify Blobs по chat_id.
 
 const { getStore, connectLambda } = require('@netlify/blobs');
 
-const TOKEN        = process.env.BOT_TOKEN;
-const MANAGER_CHAT = process.env.MANAGER_CHAT_ID || process.env.CHAT_ID;
-const PENDING_TTL_MS = 30 * 60 * 1000; // 30 минут
+const TOKEN          = process.env.BOT_TOKEN;
+const MANAGER_CHAT   = process.env.MANAGER_CHAT_ID || process.env.CHAT_ID;
+const PENDING_TTL_MS = 30 * 60 * 1000;
 
 // ──────────────── Справочники ────────────────
 const mpNames    = { w:'Wildberries', o:'Ozon', y:'Яндекс Маркет' };
 const tariffNames= { e:'Эконом', o:'Оптимальный', s:'Стандарт', p:'Премиум' };
 const markNames  = { n:'не нужна', '1':'одинарная (+4 ₽/шт)', '2':'двойная (+8 ₽/шт)' };
-const packNames  = {
-  n:'без упаковки',
-  v:'ВПП пакет', b:'БОПП', u:'Пупырка', k:'Курьерский',
-  x:'Картонная коробка',
-  A:'Коробка 10×10 (трёхслойная)',
-  B:'Коробка 15×15 (трёхслойная)',
-  C:'Коробка 20×20 (двухслойная)',
-  D:'Коробка 20×20 (трёхслойная)',
-  E:'Коробка 30×30 (трёхслойная)',
-  F:'Коробка 40×40 (трёхслойная)',
-  G:'Коробка 50×50 (трёхслойная)',
-  H:'Коробка 60×50 (трёхслойная)'
-};
 const delivNames = { n:'не нужна', s:'до 1 м³', p:'паллет + стретч', c:'договорная' };
 
+// Названия категорий упаковки (для multi-pack режима и для лейблов)
+const typeNames = {
+  v:'ВПП пакет', z:'Zip-Lock пакет', b:'БОПП пакет',
+  u:'Пупырчатая плёнка', k:'Курьерский пакет', x:'Картонная коробка'
+};
+
+// Базовые цены для multi-pack режима (минимальная цена в категории)
+const basicPackPrices = { v:3, z:15, b:18, u:15, k:15, x:22 };
+
+// Конкретные размеры — цены
+const variantPrices = {
+  v1:3, v2:8,
+  z1:15, z2:15, z3:15, z4:17, z5:17, z6:20, z7:23, z8:30, z9:30, z10:38,
+  b1:18, b2:20, b3:20, b4:21,
+  u1:15, u2:30,
+  k1:15, k2:18, k3:19, k4:20, k5:22, k6:26, k7:31, k8:34,
+  x1:22, x2:23, x3:24, x4:27, x5:32, x6:42, x7:45, x8:51
+};
+
+// Конкретные размеры — названия (для финального чека)
+const variantNames = {
+  v1:'ВПП пакет (материал заказчика)',
+  v2:'ВПП пакет (материал включён)',
+  z1:'Zip-Lock 80×120 мм, 45 мкм',
+  z2:'Zip-Lock 100×100 мм, 45 мкм',
+  z3:'Zip-Lock 100×150 мм, 45 мкм',
+  z4:'Zip-Lock 70×100 мм, 60 мкм',
+  z5:'Zip-Lock 150×200 мм, 45 мкм',
+  z6:'Zip-Lock 120×180 мм, 60 мкм',
+  z7:'Zip-Lock 150×200 мм, 60 мкм',
+  z8:'Zip-Lock 180×250 мм, 70 мкм',
+  z9:'Zip-Lock 300×400 мм, 45 мкм',
+  z10:'Zip-Lock 200×300 мм, 80 мкм',
+  b1:'БОПП 10×8 см', b2:'БОПП 15×12 см', b3:'БОПП 27×12 см', b4:'БОПП 38×15 см',
+  u1:'Пупырка', u2:'Пупырка + пакет',
+  k1:'Курьерский 100×150+40 мм', k2:'Курьерский 150×210+40 мм',
+  k3:'Курьерский 165×240+40 мм', k4:'Курьерский 190×240+40 мм',
+  k5:'Курьерский 240×320+40 мм', k6:'Курьерский 300×400+40 мм',
+  k7:'Курьерский 340×460+40 мм', k8:'Курьерский 360×500+40 мм',
+  x1:'Коробка 10×10 трёхсл.', x2:'Коробка 15×15 трёхсл.',
+  x3:'Коробка 20×20 двухсл.', x4:'Коробка 20×20 трёхсл.',
+  x5:'Коробка 30×30 трёхсл.', x6:'Коробка 40×40 трёхсл.',
+  x7:'Коробка 50×50 трёхсл.', x8:'Коробка 60×50 трёхсл.'
+};
+
+// Тарифные цены
 const tariffPrices = {
   e: { 1:25, 100:21, 250:17, 500:13, 1000:9  },
   o: { 1:29, 100:25, 250:21, 500:17, 1000:13 },
@@ -34,7 +66,6 @@ const tariffPrices = {
   p: { 1:45, 100:42, 250:36, 500:30, 1000:25 }
 };
 const markPrices  = { '1':4, '2':8 };
-const packPrices  = { v:3, b:4, u:5, k:6, x:15, A:22, B:23, C:24, D:27, E:32, F:42, G:45, H:51 };
 const delivPrices = { s:2200, p:4900 };
 
 function pricePerUnit(t, q) {
@@ -46,35 +77,44 @@ function pricePerUnit(t, q) {
   return tbl[1];
 }
 
+function packExtra(s) {
+  if (s.t === 'p' || !s.p || s.p === 'n') return 0;
+  // Если в коде есть цифры — конкретный вариант
+  if (/\d/.test(s.p)) {
+    return (variantPrices[s.p] || 0) * s.q;
+  }
+  // Multi-pack режим: сумма базовых цен по каждому символу
+  let sum = 0;
+  for (const ch of s.p) sum += (basicPackPrices[ch] || 0);
+  return sum * s.q;
+}
+
 function compute(s) {
   const per = pricePerUnit(s.t, s.q);
   const tariffTotal = per * s.q;
-  let markExtra = 0;
-  if (s.t === 'e' && s.l && s.l !== 'n') markExtra = markPrices[s.l] * s.q;
-  let packExtra = 0;
-  if (s.t !== 'p' && s.p && s.p !== 'n') {
-    for (const ch of s.p) packExtra += (packPrices[ch] || 0);
-    packExtra *= s.q;
-  }
-  const delivExtra = delivPrices[s.d] || 0;
-  const total = tariffTotal + markExtra + packExtra + delivExtra;
+  let markE = 0;
+  if (s.t === 'e' && s.l && s.l !== 'n') markE = markPrices[s.l] * s.q;
+  const packE = packExtra(s);
+  const delivE = delivPrices[s.d] || 0;
+  const total = tariffTotal + markE + packE + delivE;
   const isCustom = s.d === 'c' || s.q >= 5000;
   return {
-    per, tariffTotal, markExtra, packExtra, delivExtra, total,
+    per, tariffTotal, markE, packE, delivE, total,
     totalStr: (isCustom ? '≈ ' : '') + total.toLocaleString('ru') + ' ₽'
   };
 }
 
 function packLabel(s) {
-  if (s.t === 'p')         return 'включена в тариф';
-  if (!s.p)                 return 'не указано';
-  if (s.p === 'n')          return packNames.n;
-  if (s.p.length === 1)     return packNames[s.p];
-  return [...s.p].map(c => packNames[c]).join(' + ');
+  if (s.t === 'p') return 'включена в тариф';
+  if (!s.p)         return 'не указано';
+  if (s.p === 'n')  return 'без упаковки';
+  if (variantNames[s.p]) return variantNames[s.p];
+  if (s.p.length === 1)  return typeNames[s.p] || s.p;
+  return [...s.p].map(c => typeNames[c] || c).join(' + ');
 }
 
 function togglePack(current, ch) {
-  const cur = (!current || current === 'n') ? '' : current;
+  const cur = (!current || current === 'n' || /\d/.test(current)) ? '' : current;
   if (cur.includes(ch)) {
     const next = cur.replace(ch, '');
     return next || null;
@@ -82,8 +122,7 @@ function togglePack(current, ch) {
   return cur + ch;
 }
 
-// ──────────────── Состояние callback_data ────────────────
-// Формат: S|m|t|q|l|p|d|step
+// ──────────────── State encoding ────────────────
 function enc(s, step) {
   return ['S', s.m||'_', s.t||'_', s.q==null?'_':s.q, s.l||'_', s.p||'_', s.d||'_', step].join('|');
 }
@@ -100,26 +139,18 @@ function parse(data) {
   };
 }
 
-// ──────────────── Серверное хранение pending-state ────────────────
-// Strong consistency обязательна: запись (на клике кнопки) и чтение
-// (на следующем сообщении пользователя) идут разными вызовами функции.
+// ──────────────── Blobs pending state ────────────────
 let lastError = null;
 function store() {
   const opts = { name: 'bot-pending', consistency: 'strong' };
-  // Если автодетект не работает, используем явные siteID + token из env
   const siteID = process.env.SITE_ID || process.env.NETLIFY_SITE_ID;
   const token  = process.env.NETLIFY_AUTH_TOKEN || process.env.NETLIFY_API_TOKEN;
-  if (siteID && token) {
-    opts.siteID = siteID;
-    opts.token  = token;
-  }
+  if (siteID && token) { opts.siteID = siteID; opts.token = token; }
   return getStore(opts);
 }
-
 async function setPending(chatId, data) {
-  try {
-    await store().setJSON('chat:' + chatId, { ...data, ts: Date.now() });
-  } catch (e) { lastError = 'setPending: ' + e.message; }
+  try { await store().setJSON('chat:' + chatId, { ...data, ts: Date.now() }); }
+  catch (e) { lastError = 'setPending: ' + e.message; }
 }
 async function getPending(chatId) {
   try {
@@ -133,7 +164,8 @@ async function getPending(chatId) {
   } catch (e) { lastError = 'getPending: ' + e.message; return null; }
 }
 async function clearPending(chatId) {
-  try { await store().delete('chat:' + chatId); } catch (e) { lastError = 'clearPending: ' + e.message; }
+  try { await store().delete('chat:' + chatId); }
+  catch (e) { lastError = 'clearPending: ' + e.message; }
 }
 
 // ──────────────── Навигация ────────────────
@@ -150,6 +182,9 @@ function nextAfter(s, cur) {
   if (cur === 'd') return 'done';
 }
 
+// Соответствие типа упаковки → имя sub-step
+const PACK_SUBSTEPS = { v:'pvpp', z:'pzip', b:'pbopp', u:'pbubble', k:'pcour', x:'pbox' };
+
 function backFrom(s, cur) {
   if (cur === 't')    return { ...s, m:null, step:'m' };
   if (cur === 'q')    return { ...s, t:null, step:'t' };
@@ -159,10 +194,16 @@ function backFrom(s, cur) {
     return                    { ...s, q:null, step:'q' };
   }
   if (cur === 'pm')   return { ...s, p:null, step:'p' };
-  if (cur === 'pbox') return { ...s, p:null, step:'p' };
+  if (['pvpp','pzip','pbopp','pbubble','pcour','pbox'].includes(cur)) {
+    return                    { ...s, p:null, step:'p' };
+  }
   if (cur === 'd') {
     if (s.t === 'p')  return { ...s, q:null, step:'q' };
-    if (s.p && 'ABCDEFGH'.includes(s.p)) return { ...s, step:'pbox' };
+    // Конкретный вариант — назад в соответствующий sub-step
+    if (s.p && /\d/.test(s.p)) {
+      const sub = PACK_SUBSTEPS[s.p[0]];
+      if (sub) return { ...s, step: sub };
+    }
     if (s.p && s.p.length > 1) return { ...s, step:'pm' };
     return                    { ...s, p:null, step:'p' };
   }
@@ -239,55 +280,111 @@ function buildStep(s) {
       };
     case 'p':
       return {
-        text: `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]} · ${s.q} шт.\n\n<b>Упаковка</b>?`,
+        text: `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]} · ${s.q} шт.\n\n<b>Тип упаковки</b>?`,
         keyboard: [
-          [
-            { text: 'Без упаковки',  callback_data: enc({...s, p:'n'}, 'd') },
-            { text: 'ВПП (+3 ₽)',    callback_data: enc({...s, p:'v'}, 'd') }
-          ],
-          [
-            { text: 'БОПП (+4 ₽)',     callback_data: enc({...s, p:'b'}, 'd') },
-            { text: 'Пупырка (+5 ₽)',  callback_data: enc({...s, p:'u'}, 'd') }
-          ],
-          [
-            { text: 'Курьерский (+6 ₽)', callback_data: enc({...s, p:'k'}, 'd') },
-            { text: '📦 Коробка — выбрать размер', callback_data: enc({...s, p:null}, 'pbox') }
-          ],
+          [{ text: 'Без упаковки',          callback_data: enc({...s, p:'n'}, 'd') }],
+          [{ text: 'ВПП пакет →',           callback_data: enc({...s, p:null}, 'pvpp') }],
+          [{ text: 'Zip-Lock пакет →',      callback_data: enc({...s, p:null}, 'pzip') }],
+          [{ text: 'БОПП пакет →',          callback_data: enc({...s, p:null}, 'pbopp') }],
+          [{ text: 'Пупырчатая плёнка →',   callback_data: enc({...s, p:null}, 'pbubble') }],
+          [{ text: 'Курьерский пакет →',    callback_data: enc({...s, p:null}, 'pcour') }],
+          [{ text: '📦 Картонная коробка →', callback_data: enc({...s, p:null}, 'pbox') }],
           [{ text: '➕ Несколько типов упаковки', callback_data: enc({...s, p:null}, 'pm') }],
           navRow(s, 'p')
         ]
       };
+
+    case 'pvpp':
+      return {
+        text: `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]} · ${s.q} шт.\n\nВПП пакет — <b>выберите вариант</b>:`,
+        keyboard: [
+          [{ text: 'Материал заказчика (+3 ₽)',  callback_data: enc({...s, p:'v1'}, 'd') }],
+          [{ text: 'Материал включён (+8 ₽)',    callback_data: enc({...s, p:'v2'}, 'd') }],
+          navRow(s, 'pvpp')
+        ]
+      };
+
+    case 'pzip':
+      return {
+        text: `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]} · ${s.q} шт.\n\nZip-Lock пакет — <b>выберите размер</b>:`,
+        keyboard: [
+          [{ text: '80×120 мм, 45 мкм (+15 ₽)',  callback_data: enc({...s, p:'z1'},  'd') }],
+          [{ text: '100×100 мм, 45 мкм (+15 ₽)', callback_data: enc({...s, p:'z2'},  'd') }],
+          [{ text: '100×150 мм, 45 мкм (+15 ₽)', callback_data: enc({...s, p:'z3'},  'd') }],
+          [{ text: '70×100 мм, 60 мкм (+17 ₽)',  callback_data: enc({...s, p:'z4'},  'd') }],
+          [{ text: '150×200 мм, 45 мкм (+17 ₽)', callback_data: enc({...s, p:'z5'},  'd') }],
+          [{ text: '120×180 мм, 60 мкм (+20 ₽)', callback_data: enc({...s, p:'z6'},  'd') }],
+          [{ text: '150×200 мм, 60 мкм (+23 ₽)', callback_data: enc({...s, p:'z7'},  'd') }],
+          [{ text: '180×250 мм, 70 мкм (+30 ₽)', callback_data: enc({...s, p:'z8'},  'd') }],
+          [{ text: '300×400 мм, 45 мкм (+30 ₽)', callback_data: enc({...s, p:'z9'},  'd') }],
+          [{ text: '200×300 мм, 80 мкм (+38 ₽)', callback_data: enc({...s, p:'z10'}, 'd') }],
+          navRow(s, 'pzip')
+        ]
+      };
+
+    case 'pbopp':
+      return {
+        text: `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]} · ${s.q} шт.\n\nБОПП пакет — <b>выберите размер</b>:`,
+        keyboard: [
+          [{ text: '10×8 см (+18 ₽)',  callback_data: enc({...s, p:'b1'}, 'd') }],
+          [{ text: '15×12 см (+20 ₽)', callback_data: enc({...s, p:'b2'}, 'd') }],
+          [{ text: '27×12 см (+20 ₽)', callback_data: enc({...s, p:'b3'}, 'd') }],
+          [{ text: '38×15 см (+21 ₽)', callback_data: enc({...s, p:'b4'}, 'd') }],
+          navRow(s, 'pbopp')
+        ]
+      };
+
+    case 'pbubble':
+      return {
+        text: `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]} · ${s.q} шт.\n\nПупырчатая плёнка — <b>выберите вариант</b>:`,
+        keyboard: [
+          [{ text: 'Пупырка (+15 ₽)',         callback_data: enc({...s, p:'u1'}, 'd') }],
+          [{ text: 'Пупырка + пакет (+30 ₽)', callback_data: enc({...s, p:'u2'}, 'd') }],
+          navRow(s, 'pbubble')
+        ]
+      };
+
+    case 'pcour':
+      return {
+        text: `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]} · ${s.q} шт.\n\nКурьерский пакет — <b>выберите размер</b>:`,
+        keyboard: [
+          [{ text: '100×150+40 мм (+15 ₽)', callback_data: enc({...s, p:'k1'}, 'd') }],
+          [{ text: '150×210+40 мм (+18 ₽)', callback_data: enc({...s, p:'k2'}, 'd') }],
+          [{ text: '165×240+40 мм (+19 ₽)', callback_data: enc({...s, p:'k3'}, 'd') }],
+          [{ text: '190×240+40 мм (+20 ₽)', callback_data: enc({...s, p:'k4'}, 'd') }],
+          [{ text: '240×320+40 мм (+22 ₽)', callback_data: enc({...s, p:'k5'}, 'd') }],
+          [{ text: '300×400+40 мм (+26 ₽)', callback_data: enc({...s, p:'k6'}, 'd') }],
+          [{ text: '340×460+40 мм (+31 ₽)', callback_data: enc({...s, p:'k7'}, 'd') }],
+          [{ text: '360×500+40 мм (+34 ₽)', callback_data: enc({...s, p:'k8'}, 'd') }],
+          navRow(s, 'pcour')
+        ]
+      };
+
     case 'pbox':
       return {
-        text: `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]} · ${s.q} шт.\n\n📦 <b>Размер коробки</b>:`,
+        text: `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]} · ${s.q} шт.\n\nКартонная коробка — <b>выберите размер</b>:`,
         keyboard: [
-          [
-            { text: '10×10 трёхсл. (+22 ₽)',  callback_data: enc({...s, p:'A'}, 'd') },
-            { text: '15×15 трёхсл. (+23 ₽)',  callback_data: enc({...s, p:'B'}, 'd') }
-          ],
-          [
-            { text: '20×20 двухсл. (+24 ₽)',  callback_data: enc({...s, p:'C'}, 'd') },
-            { text: '20×20 трёхсл. (+27 ₽)',  callback_data: enc({...s, p:'D'}, 'd') }
-          ],
-          [
-            { text: '30×30 трёхсл. (+32 ₽)',  callback_data: enc({...s, p:'E'}, 'd') },
-            { text: '40×40 трёхсл. (+42 ₽)',  callback_data: enc({...s, p:'F'}, 'd') }
-          ],
-          [
-            { text: '50×50 трёхсл. (+45 ₽)',  callback_data: enc({...s, p:'G'}, 'd') },
-            { text: '60×50 трёхсл. (+51 ₽)',  callback_data: enc({...s, p:'H'}, 'd') }
-          ],
+          [{ text: '10×10 трёхслойный (+22 ₽)', callback_data: enc({...s, p:'x1'}, 'd') }],
+          [{ text: '15×15 трёхслойный (+23 ₽)', callback_data: enc({...s, p:'x2'}, 'd') }],
+          [{ text: '20×20 двухслойный (+24 ₽)', callback_data: enc({...s, p:'x3'}, 'd') }],
+          [{ text: '20×20 трёхслойный (+27 ₽)', callback_data: enc({...s, p:'x4'}, 'd') }],
+          [{ text: '30×30 трёхслойный (+32 ₽)', callback_data: enc({...s, p:'x5'}, 'd') }],
+          [{ text: '40×40 трёхслойный (+42 ₽)', callback_data: enc({...s, p:'x6'}, 'd') }],
+          [{ text: '50×50 трёхслойный (+45 ₽)', callback_data: enc({...s, p:'x7'}, 'd') }],
+          [{ text: '60×50 трёхслойный (+51 ₽)', callback_data: enc({...s, p:'x8'}, 'd') }],
           navRow(s, 'pbox')
         ]
       };
+
     case 'pm': {
-      const current = (s.p && s.p !== 'n') ? s.p : '';
+      const current = (s.p && s.p !== 'n' && !/\d/.test(s.p)) ? s.p : '';
       const items = [
         { ch:'v', name:'ВПП (+3 ₽)' },
-        { ch:'b', name:'БОПП (+4 ₽)' },
-        { ch:'u', name:'Пупырка (+5 ₽)' },
-        { ch:'k', name:'Курьерский (+6 ₽)' },
-        { ch:'x', name:'Коробка (+15 ₽)' }
+        { ch:'z', name:'Zip-Lock (+15 ₽)' },
+        { ch:'b', name:'БОПП (+18 ₽)' },
+        { ch:'u', name:'Пупырка (+15 ₽)' },
+        { ch:'k', name:'Курьерский (+15 ₽)' },
+        { ch:'x', name:'Коробка (+22 ₽)' }
       ];
       const rows = [];
       for (let i = 0; i < items.length; i += 2) {
@@ -303,23 +400,24 @@ function buildStep(s) {
       }
       if (current.length > 0) {
         let sum = 0;
-        for (const ch of current) sum += (packPrices[ch] || 0);
+        for (const ch of current) sum += (basicPackPrices[ch] || 0);
         rows.push([{
           text: `✓ Готово (упаковка: +${sum} ₽/шт)`,
           callback_data: enc(s, 'd')
         }]);
       }
       rows.push(navRow(s, 'pm'));
-      const sel = current ? [...current].map(c => packNames[c]).join(' + ') : 'пока ничего не выбрано';
+      const sel = current ? [...current].map(c => typeNames[c]).join(' + ') : 'пока ничего не выбрано';
       return {
         text:
           `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]} · ${s.q} шт.\n\n` +
           '<b>Несколько типов упаковки</b>\n' +
-          'Клик по варианту — добавить/убрать. Цены складываются.\n\n' +
+          'Клик по варианту — добавить/убрать. Цены складываются (базовые).\n\n' +
           `<i>Выбрано: ${sel}</i>`,
         keyboard: rows
       };
     }
+
     case 'd':
       return {
         text: `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]} · ${s.q} шт.\n\n<b>Доставка до склада МП</b>?`,
@@ -335,6 +433,7 @@ function buildStep(s) {
           navRow(s, 'd')
         ]
       };
+
     case 'done': {
       const c = compute(s);
       const lLabel = s.t === 'e' ? (markNames[s.l] || 'не указано') : 'включена в тариф';
@@ -356,6 +455,7 @@ function buildStep(s) {
         ]
       };
     }
+
     case 'sent':
       return {
         text:
@@ -397,11 +497,9 @@ async function sendPrompt(chatId, text, placeholder) {
   });
 }
 
-// Запрос телефона с кнопкой «Поделиться номером»
 async function sendPhonePrompt(chatId) {
   await tg('sendMessage', {
-    chat_id: chatId,
-    parse_mode: 'HTML',
+    chat_id: chatId, parse_mode: 'HTML',
     text:
       '📞 Нажмите <b>«Поделиться номером»</b> ниже\n' +
       'или введите телефон вручную\n\n' +
@@ -416,11 +514,9 @@ async function sendPhonePrompt(chatId) {
   });
 }
 
-// Снятие reply-клавиатуры
 async function removeReplyKeyboard(chatId, text) {
   await tg('sendMessage', {
-    chat_id: chatId,
-    text: text || '⬅️',
+    chat_id: chatId, text: text || '⬅️',
     reply_markup: { remove_keyboard: true }
   });
 }
@@ -460,7 +556,6 @@ async function sendToManager(chatId, s, comment, user) {
 
 // ──────────────── Webhook handler ────────────────
 exports.handler = async (event) => {
-  // Инициализация Netlify Blobs контекста для Lambda-стиля функций
   try { connectLambda(event); } catch (e) { lastError = 'connectLambda: ' + e.message; }
 
   if (event.httpMethod !== 'POST') return { statusCode: 200, body: 'ok' };
@@ -471,7 +566,7 @@ exports.handler = async (event) => {
   catch { return { statusCode: 200, body: 'bad json' }; }
 
   try {
-    // ────── КОНТАКТ (нажата кнопка «Поделиться номером») ──────
+    // ────── КОНТАКТ ──────
     if (upd.message && upd.message.contact) {
       const chatId = upd.message.chat.id;
       const pending = await getPending(chatId);
@@ -486,7 +581,6 @@ exports.handler = async (event) => {
             'Напишите пару слов ИЛИ отправьте «<b>-</b>» чтобы пропустить.',
             'Пара слов о товаре или «-»');
         } else {
-          // некорректный телефон в контакте — просим снова
           await sendPhonePrompt(chatId);
         }
       }
@@ -506,7 +600,21 @@ exports.handler = async (event) => {
         return { statusCode: 200, body: 'ok' };
       }
 
-      // Диагностика хранилища: write → read → verify
+      // Команды старта
+      if (cmd === '/start' || cmd === '/calc') {
+        await clearPending(chatId);
+        await sendStep(chatId, { step: 'm' });
+        return { statusCode: 200, body: 'ok' };
+      }
+      if (cmd === '/help') {
+        await tg('sendMessage', {
+          chat_id: chatId,
+          text: 'GoPack — фулфилмент для маркетплейсов.\n\n/calc — рассчитать стоимость\n/start — начать заново'
+        });
+        return { statusCode: 200, body: 'ok' };
+      }
+
+      // Диагностика
       if (cmd === '/debug') {
         lastError = null;
         const testKey = 'test-' + Date.now();
@@ -525,46 +633,23 @@ exports.handler = async (event) => {
         }
         if (lastError) report += '\n⚠️ lastError: ' + lastError;
         const pending = await getPending(chatId);
-        report += '\n\n📦 pending для вашего chat_id: ' + (pending ? JSON.stringify(pending) : 'нет');
-        report += '\n\n🔍 ENV:\n' +
-          '• SITE_ID: ' + (process.env.SITE_ID ? '✓' : '✗') + '\n' +
-          '• NETLIFY_SITE_ID: ' + (process.env.NETLIFY_SITE_ID ? '✓' : '✗') + '\n' +
-          '• NETLIFY_BLOBS_CONTEXT: ' + (process.env.NETLIFY_BLOBS_CONTEXT ? '✓' : '✗') + '\n' +
-          '• NETLIFY_AUTH_TOKEN: ' + (process.env.NETLIFY_AUTH_TOKEN ? '✓' : '✗') + '\n' +
-          '• DEPLOY_ID: ' + (process.env.DEPLOY_ID ? '✓' : '✗');
+        report += '\n\n📦 pending: ' + (pending ? JSON.stringify(pending) : 'нет');
         await tg('sendMessage', { chat_id: chatId, text: report, parse_mode: 'HTML' });
         return { statusCode: 200, body: 'ok' };
       }
 
-      // Команды старта — всегда сбрасывают pending
-      if (cmd === '/start' || cmd === '/calc') {
-        await clearPending(chatId);
-        await sendStep(chatId, { step: 'm' });
-        return { statusCode: 200, body: 'ok' };
-      }
-      if (cmd === '/help') {
-        await tg('sendMessage', {
-          chat_id: chatId,
-          text: 'GoPack — фулфилмент для маркетплейсов.\n\n/calc — рассчитать стоимость\n/start — начать заново'
-        });
-        return { statusCode: 200, body: 'ok' };
-      }
-
-      // Проверяем pending-state — ожидает ли бот сейчас текстовый ответ?
       const pending = await getPending(chatId);
 
-      // Универсальная команда «назад» в любом текстовом шаге
+      // Универсальное «назад»
       if (pending && (lc === 'назад' || lc === 'back')) {
         if (pending.step === 'qresp') {
           await clearPending(chatId);
           await sendStep(chatId, { ...pending.s, step: 'q' });
         } else if (pending.step === 'phoneresp') {
           await clearPending(chatId);
-          // снять reply-клавиатуру с кнопкой «Поделиться номером»
           await removeReplyKeyboard(chatId, '⬅️ Возврат к расчёту');
           await sendStep(chatId, { ...pending.s, step: 'done' });
         } else if (pending.step === 'commentresp') {
-          // Назад к телефону
           await setPending(chatId, { step: 'phoneresp', s: { ...pending.s, phone: null } });
           await sendPhonePrompt(chatId);
         }
@@ -572,7 +657,6 @@ exports.handler = async (event) => {
       }
 
       if (pending) {
-        // Ввод точного количества
         if (pending.step === 'qresp') {
           const numStr = text.replace(/[\s.,' ]/g, '');
           const q = parseInt(numStr);
@@ -589,12 +673,11 @@ exports.handler = async (event) => {
           return { statusCode: 200, body: 'ok' };
         }
 
-        // Ввод телефона
         if (pending.step === 'phoneresp') {
           const phoneDigits = normalizePhone(text);
           if (!phoneDigits) {
             await sendPrompt(chatId,
-              '⚠️ Не похоже на телефон. Введите номер в формате +7 (999) 123-45-67 или просто 9991234567.\n<i>(или отправьте «назад», чтобы вернуться)</i>',
+              '⚠️ Не похоже на телефон. Введите номер в формате +7 (999) 123-45-67 или 9991234567.\n<i>(или отправьте «назад» чтобы вернуться)</i>',
               '+7 (___) ___-__-__');
             return { statusCode: 200, body: 'ok' };
           }
@@ -608,7 +691,6 @@ exports.handler = async (event) => {
           return { statusCode: 200, body: 'ok' };
         }
 
-        // Ввод комментария
         if (pending.step === 'commentresp') {
           const skipWords = ['-', '—', '–', 'нет', 'no', 'skip', 'пропустить', 'пропуск', 'нету', 'без'];
           const comment = skipWords.includes(lc) ? '' : text;
@@ -618,7 +700,6 @@ exports.handler = async (event) => {
         }
       }
 
-      // Нет ни команды, ни pending — мягкая подсказка
       await tg('sendMessage', {
         chat_id: chatId,
         text: '👋 Чтобы рассчитать стоимость фулфилмента, отправьте /calc'
@@ -626,7 +707,7 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: 'ok' };
     }
 
-    // ────── НАЖАТИЯ INLINE-КНОПОК ──────
+    // ────── INLINE-КНОПКИ ──────
     else if (upd.callback_query) {
       const cq    = upd.callback_query;
       const data  = cq.data || '';
@@ -637,11 +718,8 @@ exports.handler = async (event) => {
 
       if (data.startsWith('S|')) {
         const s = parse(data);
-
-        // Любое нажатие кнопки — отменяем ожидание текстового ответа
         await clearPending(chatId);
 
-        // Запрос точного количества
         if (s.step === 'qask') {
           await setPending(chatId, { step: 'qresp', s });
           await sendPrompt(chatId,
@@ -652,14 +730,12 @@ exports.handler = async (event) => {
           return { statusCode: 200, body: 'ok' };
         }
 
-        // Запрос телефона (новое имя 'phoneask' и старое 'send' для совместимости)
         if (s.step === 'phoneask' || s.step === 'send') {
           await setPending(chatId, { step: 'phoneresp', s });
           await sendPhonePrompt(chatId);
           return { statusCode: 200, body: 'ok' };
         }
 
-        // Обычные переходы — редактируем сообщение
         const step = buildStep(s);
         await tg('editMessageText', {
           chat_id: chatId, message_id: msgId, text: step.text, parse_mode: 'HTML',
@@ -668,7 +744,7 @@ exports.handler = async (event) => {
       }
     }
   } catch (e) {
-    // глотаем ошибки — иначе Telegram будет ретраить webhook
+    // глотаем ошибки чтобы Telegram не ретраил
   }
 
   return { statusCode: 200, body: 'ok' };
