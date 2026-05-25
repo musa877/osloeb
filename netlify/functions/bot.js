@@ -16,14 +16,14 @@ const packNames  = {
   n:'без упаковки',
   v:'ВПП пакет', b:'БОПП', u:'Пупырка', k:'Курьерский',
   x:'Картонная коробка',
-  A:'Коробка XS (10×10×5)',
-  B:'Коробка S (15×10×10)',
-  C:'Коробка S+ (20×15×10)',
-  D:'Коробка M (20×20×15)',
-  E:'Коробка M+ (25×20×15)',
-  F:'Коробка L (30×25×20)',
-  G:'Коробка XL (40×30×25)',
-  H:'Коробка XXL (50×40×30)'
+  A:'Коробка 10×10 (трёхслойная)',
+  B:'Коробка 15×15 (трёхслойная)',
+  C:'Коробка 20×20 (двухслойная)',
+  D:'Коробка 20×20 (трёхслойная)',
+  E:'Коробка 30×30 (трёхслойная)',
+  F:'Коробка 40×40 (трёхслойная)',
+  G:'Коробка 50×50 (трёхслойная)',
+  H:'Коробка 60×50 (трёхслойная)'
 };
 const delivNames = { n:'не нужна', s:'до 1 м³', p:'паллет + стретч', c:'договорная' };
 
@@ -34,7 +34,7 @@ const tariffPrices = {
   p: { 1:45, 100:42, 250:36, 500:30, 1000:25 }
 };
 const markPrices  = { '1':4, '2':8 };
-const packPrices  = { v:3, b:4, u:5, k:6, x:15, A:8, B:12, C:15, D:18, E:22, F:28, G:35, H:50 };
+const packPrices  = { v:3, b:4, u:5, k:6, x:15, A:22, B:23, C:24, D:27, E:32, F:42, G:45, H:51 };
 const delivPrices = { s:2200, p:4900 };
 
 function pricePerUnit(t, q) {
@@ -262,20 +262,20 @@ function buildStep(s) {
         text: `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]} · ${s.q} шт.\n\n📦 <b>Размер коробки</b>:`,
         keyboard: [
           [
-            { text: 'XS · 10×10×5 (+8 ₽)',  callback_data: enc({...s, p:'A'}, 'd') },
-            { text: 'S · 15×10×10 (+12 ₽)', callback_data: enc({...s, p:'B'}, 'd') }
+            { text: '10×10 трёхсл. (+22 ₽)',  callback_data: enc({...s, p:'A'}, 'd') },
+            { text: '15×15 трёхсл. (+23 ₽)',  callback_data: enc({...s, p:'B'}, 'd') }
           ],
           [
-            { text: 'S+ · 20×15×10 (+15 ₽)', callback_data: enc({...s, p:'C'}, 'd') },
-            { text: 'M · 20×20×15 (+18 ₽)',  callback_data: enc({...s, p:'D'}, 'd') }
+            { text: '20×20 двухсл. (+24 ₽)',  callback_data: enc({...s, p:'C'}, 'd') },
+            { text: '20×20 трёхсл. (+27 ₽)',  callback_data: enc({...s, p:'D'}, 'd') }
           ],
           [
-            { text: 'M+ · 25×20×15 (+22 ₽)', callback_data: enc({...s, p:'E'}, 'd') },
-            { text: 'L · 30×25×20 (+28 ₽)',  callback_data: enc({...s, p:'F'}, 'd') }
+            { text: '30×30 трёхсл. (+32 ₽)',  callback_data: enc({...s, p:'E'}, 'd') },
+            { text: '40×40 трёхсл. (+42 ₽)',  callback_data: enc({...s, p:'F'}, 'd') }
           ],
           [
-            { text: 'XL · 40×30×25 (+35 ₽)',  callback_data: enc({...s, p:'G'}, 'd') },
-            { text: 'XXL · 50×40×30 (+50 ₽)', callback_data: enc({...s, p:'H'}, 'd') }
+            { text: '50×50 трёхсл. (+45 ₽)',  callback_data: enc({...s, p:'G'}, 'd') },
+            { text: '60×50 трёхсл. (+51 ₽)',  callback_data: enc({...s, p:'H'}, 'd') }
           ],
           navRow(s, 'pbox')
         ]

@@ -1133,7 +1133,14 @@
               <option value="bubble">Пупырчатая плёнка — 5 ₽</option>
               <option value="bubble_bag">Пупырка + пакет — 9 ₽</option>
               <option value="courier">Курьерский пакет — 6 ₽</option>
-              <option value="box">Картонная коробка — 15 ₽</option>
+              <option value="box1">Коробка 10×10 трёхсл. — 22 ₽</option>
+              <option value="box2">Коробка 15×15 трёхсл. — 23 ₽</option>
+              <option value="box3">Коробка 20×20 двухсл. — 24 ₽</option>
+              <option value="box4">Коробка 20×20 трёхсл. — 27 ₽</option>
+              <option value="box5">Коробка 30×30 трёхсл. — 32 ₽</option>
+              <option value="box6">Коробка 40×40 трёхсл. — 42 ₽</option>
+              <option value="box7">Коробка 50×50 трёхсл. — 45 ₽</option>
+              <option value="box8">Коробка 60×50 трёхсл. — 51 ₽</option>
             </select>
           </div>
           <div class="form-group">
@@ -1391,7 +1398,7 @@ const tariffPrices = {
   premium: { 1:45, 100:42, 250:36, 500:30, 1000:25 }
 };
 const markingPrices = { none:0, single:4, double:8 };
-const packagingPrices = { none:0, vpp:3, vpp_mat:8, bopp:4, bubble:5, bubble_bag:9, courier:6, box:15 };
+const packagingPrices = { none:0, vpp:3, vpp_mat:8, bopp:4, bubble:5, bubble_bag:9, courier:6, box1:22, box2:23, box3:24, box4:27, box5:32, box6:42, box7:45, box8:51 };
 const deliveryPrices = { none:0, small:2200, pallet:4900, custom:0 };
 
 function getTariffPrice(tariff, qty) {
@@ -1472,7 +1479,7 @@ function calcUpdate() {
   document.getElementById('calcTotal').textContent = totalStr;
 
   // Формируем оффер для мессенджеров
-  const packNamesRu = { none:'без упаковки', vpp:'ВПП пакет (материал заказчика)', vpp_mat:'ВПП пакет (материал включён)', bopp:'БОПП пакет', bubble:'Пупырчатая плёнка', bubble_bag:'Пупырка + пакет', courier:'Курьерский пакет', box:'Картонная коробка' };
+  const packNamesRu = { none:'без упаковки', vpp:'ВПП пакет (материал заказчика)', vpp_mat:'ВПП пакет (материал включён)', bopp:'БОПП пакет', bubble:'Пупырчатая плёнка', bubble_bag:'Пупырка + пакет', courier:'Курьерский пакет', box1:'Коробка 10×10 трёхсл.', box2:'Коробка 15×15 трёхсл.', box3:'Коробка 20×20 двухсл.', box4:'Коробка 20×20 трёхсл.', box5:'Коробка 30×30 трёхсл.', box6:'Коробка 40×40 трёхсл.', box7:'Коробка 50×50 трёхсл.', box8:'Коробка 60×50 трёхсл.' };
   const markNamesRu = { none:'не нужна', single:'одинарная', double:'двойная' };
   const delivNamesRu = { none:'без доставки', small:'до 1 м³', pallet:'паллет + стретч', custom:'договорная' };
 
