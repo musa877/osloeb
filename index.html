@@ -8,7 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23102A43'/><g stroke='white' stroke-width='6' stroke-linecap='round' stroke-linejoin='round' fill='none' transform='translate(8 8) scale(2)'><path d='M21 12a9 9 0 1 1-6.219-8.56'/><path d='M12 12h9'/><path d='M16 8l4 4-4 4'/></g></svg>">
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="apple-touch-icon" href="logo.png">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -151,7 +152,7 @@
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
     /* CORPORATE LOGO STYLE */
-    .navbar-logo-icon { background: linear-gradient(135deg, var(--blue) 0%, var(--blue-accent) 100%) !important; box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
+    .navbar-logo-icon { box-shadow: 0 4px 12px rgba(16,42,67,0.15); }
     .navbar-logo span { color: var(--red); }
 
     /* SECTION TAG */
@@ -209,10 +210,11 @@
     }
     .navbar-logo span { color: var(--red); }
     .navbar-logo-icon {
-      width: 32px; height: 32px; background: linear-gradient(135deg, var(--red), var(--orange));
-      border-radius: 8px; display: flex; align-items: center; justify-content: center;
-      font-size: 16px; font-weight: 800; color: #fff;
+      width: 36px; height: 36px; background: transparent;
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      overflow: hidden; flex-shrink: 0;
     }
+    .navbar-logo-icon img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
     .navbar-nav { display: flex; align-items: center; gap: 4px; }
     .navbar-nav a {
       padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;
@@ -627,7 +629,7 @@
 <nav class="navbar">
   <div class="container navbar-inner">
     <a href="#" class="navbar-logo">
-      <div class="navbar-logo-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-label="GoPack"><path d="M21 12a9 9 0 1 1-6.219-8.56"/><path d="M12 12h9"/><path d="M16 8l4 4-4 4"/></svg></div>
+      <div class="navbar-logo-icon"><img src="logo.png" alt="GoPack" width="36" height="36"></div>
       GoPack<span>.</span>
     </a>
     <div class="navbar-nav">
@@ -1311,7 +1313,7 @@
     <div class="footer-inner">
       <div class="footer-brand">
         <div class="navbar-logo" style="margin-bottom:0">
-          <div class="navbar-logo-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-label="GoPack"><path d="M21 12a9 9 0 1 1-6.219-8.56"/><path d="M12 12h9"/><path d="M16 8l4 4-4 4"/></svg></div>
+          <div class="navbar-logo-icon"><img src="logo.png" alt="GoPack" width="36" height="36"></div>
           GoPack<span style="color:var(--red)">.</span>
         </div>
         <p>Умный фулфилмент для маркетплейсов. Приёмка, упаковка, маркировка и доставка до склада Wildberries, Ozon и Яндекс Маркет.</p>
