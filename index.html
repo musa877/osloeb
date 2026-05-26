@@ -1570,7 +1570,7 @@ function calcUpdate() {
 // Токен бота хранится в переменных окружения Netlify, не в этом коде.
 async function notify(payload) {
   try {
-    const r = await fetch('/.netlify/functions/notify', {
+    const r = await fetch('/notify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)

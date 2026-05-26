@@ -2,8 +2,5 @@
   "name": "gopack-fulfilment",
   "version": "1.0.0",
   "private": true,
-  "description": "GoPack Fulfilment landing page + Telegram bot",
-  "dependencies": {
-    "@netlify/blobs": "^8.1.0"
-  }
+  "description": "GoPack Fulfilment — landing + Telegram bot (Cloudflare Pages)"
 }
