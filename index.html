@@ -8,7 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="icon" type="image/png" href="logo1.jpg">
+  <link rel="icon" type="image/jpeg" href="logo1.jpg">
+  <link rel="shortcut icon" href="logo1.jpg">
   <link rel="apple-touch-icon" href="logo1.jpg">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -868,11 +869,11 @@
           <table class="pricing-table">
             <thead><tr><th>Объём</th><th>₽/шт.</th></tr></thead>
             <tbody>
-              <tr><td>от 1 000 шт.</td><td>9 ₽</td></tr>
-              <tr><td>от 500 шт.</td><td>13 ₽</td></tr>
-              <tr><td>от 250 шт.</td><td>17 ₽</td></tr>
-              <tr><td>от 100 шт.</td><td>21 ₽</td></tr>
-              <tr><td>от 1 шт.</td><td>25 ₽</td></tr>
+              <tr><td>от 1 000 шт.</td><td>7 ₽</td></tr>
+              <tr><td>от 500 шт.</td><td>10 ₽</td></tr>
+              <tr><td>от 250 шт.</td><td>13 ₽</td></tr>
+              <tr><td>от 100 шт.</td><td>16 ₽</td></tr>
+              <tr><td>от 1 шт.</td><td>19 ₽</td></tr>
             </tbody>
           </table>
           <div class="pricing-features">
@@ -973,7 +974,7 @@
               <div class="logistics-row-name">Забор с рынков Москвы</div>
               <div class="logistics-row-sub">Южные ворота, Садовод, ТЯК</div>
             </div>
-            <div class="logistics-row-price">от 2 200 ₽</div>
+            <div class="logistics-row-price">от 1 700 ₽</div>
           </div>
           <div class="logistics-row">
             <div>
@@ -1164,13 +1165,13 @@
                 <option value="cour8">360×500+40 мм — 34 ₽</option>
               </optgroup>
               <optgroup label="Картонная коробка (самосборная)">
-                <option value="sbox1">130×90×40 мм — 15 ₽</option>
-                <option value="sbox2">170×90×50 мм — 22 ₽</option>
-                <option value="sbox3">200×100×50 мм — 20 ₽</option>
-                <option value="sbox4">110×110×110 мм — 26 ₽</option>
-                <option value="sbox5">170×120×100 мм — 30 ₽</option>
-                <option value="sbox6">270×165×50 мм — 40 ₽</option>
-                <option value="sbox7">220×165×100 мм — 48 ₽</option>
+                <option value="sbox1">130×90×40 мм — 14 ₽</option>
+                <option value="sbox2">170×90×50 мм — 20 ₽</option>
+                <option value="sbox3">200×100×50 мм — 19 ₽</option>
+                <option value="sbox4">110×110×110 мм — 23 ₽</option>
+                <option value="sbox5">170×120×100 мм — 26 ₽</option>
+                <option value="sbox6">270×165×50 мм — 33 ₽</option>
+                <option value="sbox7">220×165×100 мм — 38 ₽</option>
               </optgroup>
             </select>
           </div>
@@ -1423,7 +1424,7 @@ function toggleFaq(btn) {
 
 // ======== CALCULATOR ========
 const tariffPrices = {
-  econom:  { 1:25, 100:21, 250:17, 500:13, 1000:9 },
+  econom:  { 1:19, 100:16, 250:13, 500:10, 1000:7 },
   optimal: { 1:29, 100:25, 250:21, 500:17, 1000:13 },
   standart:{ 1:33, 100:29, 250:25, 500:21, 1000:17 },
   premium: { 1:45, 100:42, 250:36, 500:30, 1000:25 }
@@ -1436,7 +1437,7 @@ const packagingPrices = {
   bopp1:18, bopp2:20, bopp3:20, bopp4:21,
   bub1:15, bub2:30,
   cour1:15, cour2:18, cour3:19, cour4:20, cour5:22, cour6:26, cour7:31, cour8:34,
-  sbox1:15, sbox2:22, sbox3:20, sbox4:26, sbox5:30, sbox6:40, sbox7:48
+  sbox1:14, sbox2:20, sbox3:19, sbox4:23, sbox5:26, sbox6:33, sbox7:38
 };
 const deliveryPrices = { none:0, small:2200, pallet:4900, custom:0 };
 

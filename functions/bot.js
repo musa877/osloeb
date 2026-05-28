@@ -22,7 +22,7 @@ const variantPrices = {
   b1:18, b2:20, b3:20, b4:21,
   u1:15, u2:30,
   k1:15, k2:18, k3:19, k4:20, k5:22, k6:26, k7:31, k8:34,
-  s1:15, s2:22, s3:20, s4:26, s5:30, s6:40, s7:48
+  s1:14, s2:20, s3:19, s4:23, s5:26, s6:33, s7:38
 };
 const variantNames = {
   v1:'ВПП пакет (материал заказчика)',
@@ -50,7 +50,7 @@ const variantNames = {
 };
 
 const tariffPrices = {
-  e: { 1:25, 100:21, 250:17, 500:13, 1000:9  },
+  e: { 1:19, 100:16, 250:13, 500:10, 1000:7  },
   o: { 1:29, 100:25, 250:21, 500:17, 1000:13 },
   s: { 1:33, 100:29, 250:25, 500:21, 1000:17 },
   p: { 1:45, 100:42, 250:36, 500:30, 1000:25 }
@@ -204,7 +204,7 @@ function buildStep(s) {
       return {
         text: `🛒 ${mpNames[s.m]}\n\nВыберите <b>тариф</b>:`,
         keyboard: [
-          [{ text: 'Эконом — от 9 ₽/шт',           callback_data: enc({...s, t:'e'}, 'q') }],
+          [{ text: 'Эконом — от 7 ₽/шт',           callback_data: enc({...s, t:'e'}, 'q') }],
           [{ text: '🔥 Оптимальный — от 13 ₽/шт',  callback_data: enc({...s, t:'o'}, 'q') }],
           [{ text: 'Стандарт — от 17 ₽/шт',        callback_data: enc({...s, t:'s'}, 'q') }],
           [{ text: 'Премиум — от 25 ₽/шт',         callback_data: enc({...s, t:'p'}, 'q') }],
@@ -314,13 +314,13 @@ function buildStep(s) {
       return {
         text: `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]} · ${s.q} шт.\n\nСамосборная коробка — <b>выберите размер</b>:`,
         keyboard: [
-          [{ text: '130×90×40 мм (+15 ₽)',   callback_data: enc({...s, p:'s1'}, 'd') }],
-          [{ text: '170×90×50 мм (+22 ₽)',   callback_data: enc({...s, p:'s2'}, 'd') }],
-          [{ text: '200×100×50 мм (+20 ₽)',  callback_data: enc({...s, p:'s3'}, 'd') }],
-          [{ text: '110×110×110 мм (+26 ₽)', callback_data: enc({...s, p:'s4'}, 'd') }],
-          [{ text: '170×120×100 мм (+30 ₽)', callback_data: enc({...s, p:'s5'}, 'd') }],
-          [{ text: '270×165×50 мм (+40 ₽)',  callback_data: enc({...s, p:'s6'}, 'd') }],
-          [{ text: '220×165×100 мм (+48 ₽)', callback_data: enc({...s, p:'s7'}, 'd') }],
+          [{ text: '130×90×40 мм (+14 ₽)',   callback_data: enc({...s, p:'s1'}, 'd') }],
+          [{ text: '170×90×50 мм (+20 ₽)',   callback_data: enc({...s, p:'s2'}, 'd') }],
+          [{ text: '200×100×50 мм (+19 ₽)',  callback_data: enc({...s, p:'s3'}, 'd') }],
+          [{ text: '110×110×110 мм (+23 ₽)', callback_data: enc({...s, p:'s4'}, 'd') }],
+          [{ text: '170×120×100 мм (+26 ₽)', callback_data: enc({...s, p:'s5'}, 'd') }],
+          [{ text: '270×165×50 мм (+33 ₽)',  callback_data: enc({...s, p:'s6'}, 'd') }],
+          [{ text: '220×165×100 мм (+38 ₽)', callback_data: enc({...s, p:'s7'}, 'd') }],
           navRow(s, 'psbox')
         ]
       };
