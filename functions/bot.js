@@ -513,19 +513,36 @@ export async function onRequestPost({ request, env }) {
     if (upd.message && upd.message.contact) {
       const chatId = upd.message.chat.id;
       const pending = await getPending(env, chatId);
-      if (pending && pending.step === 'phoneresp') {
-        const phoneDigits = normalizePhone(upd.message.contact.phone_number);
-        if (phoneDigits) {
-          const newS = { ...pending.s, phone: phoneDigits };
-          await setPending(env, chatId, { step: 'commentresp', s: newS });
-          await sendPrompt(env, chatId,
-            `📞 Телефон: <code>${formatPhone(phoneDigits)}</code>\n\n` +
-            '📝 <b>Комментарий</b> (объём партии, особенности товара) — необязательно.\n\n' +
-            'Напишите пару слов ИЛИ отправьте «<b>-</b>» чтобы пропустить.',
-            'Пара слов о товаре или «-»');
-        } else {
-          await sendPhonePrompt(env, chatId);
-        }
+      const phoneDigits = normalizePhone(upd.message.contact.phone_number);
+
+      if (pending && pending.step === 'phoneresp' && phoneDigits) {
+        // Нормальный путь: pending найден, идём к комментарию
+        const newS = { ...pending.s, phone: phoneDigits };
+        await setPending(env, chatId, { step: 'commentresp', s: newS });
+        await sendPrompt(env, chatId,
+          `📞 Телефон: <code>${formatPhone(phoneDigits)}</code>\n\n` +
+          '📝 <b>Комментарий</b> (объём партии, особенности товара) — необязательно.\n\n' +
+          'Напишите пару слов ИЛИ отправьте «<b>-</b>» чтобы пропустить.',
+          'Пара слов о товаре или «-»');
+      } else if (phoneDigits) {
+        // Контакт пришёл без pending — отправим менеджеру что есть + попросим клиента /calc
+        const u = upd.message.from;
+        const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ') || 'без имени';
+        const link = u.username ? '@' + u.username : `<a href="tg://user?id=${u.id}">${fullName}</a>`;
+        const managerChat = env.MANAGER_CHAT_ID || env.CHAT_ID;
+        await tg(env, 'sendMessage', {
+          chat_id: managerChat, parse_mode: 'HTML',
+          text:
+            '📞 <b>Контакт из бота (без расчёта)</b>\n\n' +
+            `👤 ${fullName}\n` +
+            `📞 <code>${formatPhone(phoneDigits)}</code>\n` +
+            `💬 ${link}\n\n` +
+            '<i>Клиент поделился контактом, но не завершил расчёт. Свяжитесь и уточните параметры.</i>'
+        });
+        await removeReplyKeyboard(env, chatId, '✅ Спасибо! Менеджер свяжется с вами.');
+      } else {
+        // Не смогли распарсить телефон — просим ввести вручную
+        await sendPhonePrompt(env, chatId);
       }
       return ok();
     }
