@@ -939,7 +939,7 @@
         <!-- ПРЕМИУМ -->
         <div class="pricing-card">
           <div class="pricing-card-name">Премиум</div>
-          <div class="pricing-card-desc">Полный фулфилмент под ключ — упаковка от нас включена</div>
+          <div class="pricing-card-desc">Полный фулфилмент под ключ — упаковка до 30 ₽/шт включена</div>
           <table class="pricing-table">
             <thead><tr><th>Объём</th><th>₽/шт.</th></tr></thead>
             <tbody>
@@ -955,7 +955,7 @@
             <div class="feature-item"><span class="feature-check">✓</span>Пересчёт + проверка брака</div>
             <div class="feature-item"><span class="feature-check">✓</span>Двойная маркировка</div>
             <div class="feature-item"><span class="feature-check">✓</span>Идентификация SKU</div>
-            <div class="feature-item"><span class="feature-check">✓</span>Упаковка (материал включён)</div>
+            <div class="feature-item"><span class="feature-check">✓</span>Упаковка до 30 ₽/шт включена (сверх — по разнице)</div>
             <div class="feature-item"><span class="feature-check">✓</span>Фото/видеофиксация</div>
             <div class="feature-item"><span class="feature-check">✓</span>Персональный менеджер</div>
           </div>
@@ -1461,11 +1461,11 @@ function calcUpdate() {
   const markingGroup = document.getElementById('markingGroup');
   const packagingGroup = document.getElementById('packagingGroup');
 
+  const PREMIUM_PACK_LIMIT = 30; // ₽/шт — Премиум покрывает упаковку до этой суммы
   let markingIncluded = false;
-  let packIncluded = false;
   if (tariff === 'optimal') { markingIncluded = true; }
   if (tariff === 'standart') { markingIncluded = true; }
-  if (tariff === 'premium') { markingIncluded = true; packIncluded = true; }
+  if (tariff === 'premium') { markingIncluded = true; }
 
   const tariffPricePerUnit = getTariffPrice(tariff, qty);
   const tariffTotal = tariffPricePerUnit * qty;
@@ -1480,20 +1480,20 @@ function calcUpdate() {
     markingLabel = 'включена в тариф';
   }
 
+  const packBasePrice = packagingPrices[packVal] || 0;
   let packExtra = 0;
-  let packLabel = '';
-  if (!packIncluded) {
-    packExtra = packagingPrices[packVal] * qty;
-    if (packVal === 'none') packLabel = 'без упаковки';
-    else if (packVal === 'vpp') packLabel = 'ВПП пакет';
-    else if (packVal === 'vpp_mat') packLabel = 'ВПП пакет (вкл.)';
-    else if (packVal === 'bopp') packLabel = 'БОПП пакет';
-    else if (packVal === 'bubble') packLabel = 'Пупырчатая плёнка';
-    else if (packVal === 'bubble_bag') packLabel = 'Пупырка + пакет';
-    else if (packVal === 'courier') packLabel = 'Курьерский пакет';
-    else if (packVal === 'box') packLabel = 'Картонная коробка';
+  let packLineDisplay = '';
+  if (packVal === 'none') {
+    packLineDisplay = 'без упаковки';
+  } else if (tariff === 'premium') {
+    const extraPerUnit = Math.max(0, packBasePrice - PREMIUM_PACK_LIMIT);
+    packExtra = extraPerUnit * qty;
+    packLineDisplay = packExtra === 0
+      ? `включена в Премиум (до ${PREMIUM_PACK_LIMIT} ₽/шт)`
+      : `+${packExtra.toLocaleString('ru')} ₽ (сверх ${PREMIUM_PACK_LIMIT} ₽/шт)`;
   } else {
-    packLabel = 'включена в тариф';
+    packExtra = packBasePrice * qty;
+    packLineDisplay = packExtra > 0 ? packExtra.toLocaleString('ru') + ' ₽' : 'без упаковки';
   }
 
   const delivTotal = deliveryPrices[delivVal];
@@ -1509,7 +1509,7 @@ function calcUpdate() {
   let linesHtml = `
     <div class="calc-line"><span>Тариф «${tariffNames[tariff]}»</span><span>${tariffPricePerUnit} ₽ × ${qty.toLocaleString('ru')} = ${tariffTotal.toLocaleString('ru')} ₽</span></div>
     <div class="calc-line"><span>Доп. маркировка</span><span>${markingIncluded ? markingLabel : (markingExtra > 0 ? markingExtra.toLocaleString('ru')+' ₽' : markingLabel)}</span></div>
-    <div class="calc-line"><span>Упаковка</span><span>${packIncluded ? 'включена в тариф' : (packExtra > 0 ? packExtra.toLocaleString('ru')+' ₽' : 'без упаковки')}</span></div>
+    <div class="calc-line"><span>Упаковка</span><span>${packLineDisplay}</span></div>
     <div class="calc-line"><span>Доставка</span><span>${delivVal === 'custom' ? 'Договорная' : (delivTotal > 0 ? delivTotal.toLocaleString('ru')+' ₽' : delivLabel)}</span></div>
   `;
 
@@ -1539,12 +1539,24 @@ function calcUpdate() {
   const markNamesRu = { none:'не нужна', single:'одинарная', double:'двойная' };
   const delivNamesRu = { none:'без доставки', small:'до 1 м³', pallet:'паллет + стретч', custom:'договорная' };
 
+  // Метка упаковки для оффера/менеджера (с учётом Премиум-покрытия)
+  let packOfferLabel;
+  if (packVal === 'none') {
+    packOfferLabel = 'без упаковки';
+  } else if (tariff === 'premium') {
+    packOfferLabel = packExtra === 0
+      ? `${packNamesRu[packVal]} (включена в Премиум)`
+      : `${packNamesRu[packVal]} (+${packExtra.toLocaleString('ru')} ₽ сверх лимита ${PREMIUM_PACK_LIMIT} ₽/шт)`;
+  } else {
+    packOfferLabel = packNamesRu[packVal];
+  }
+
   const offerText =
     `Здравствуйте! Я рассчитал стоимость фулфилмента в GoPack:\n\n` +
     `📦 Тариф: ${tariffNames[tariff]}\n` +
     `🔢 Количество: ${qty.toLocaleString('ru')} шт.\n` +
     `🏷 Маркировка: ${markingIncluded ? 'включена в тариф' : markNamesRu[markingVal]}\n` +
-    `📫 Упаковка: ${packIncluded ? 'включена в тариф' : packNamesRu[packVal]}\n` +
+    `📫 Упаковка: ${packOfferLabel}\n` +
     `🚚 Доставка: ${delivNamesRu[delivVal]}\n\n` +
     `💰 Итого: ~${totalStr}\n\n` +
     `Хочу уточнить детали и начать сотрудничество.`;
@@ -1561,7 +1573,7 @@ function calcUpdate() {
     tariff:    tariffNames[tariff],
     qty:       qty.toLocaleString('ru'),
     marking:   markingIncluded ? 'включена в тариф' : markNamesRu[markingVal],
-    packaging: packIncluded ? 'включена в тариф' : packNamesRu[packVal],
+    packaging: packOfferLabel,
     delivery:  delivNamesRu[delivVal],
     total:     totalStr
   };

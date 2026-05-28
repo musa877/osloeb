@@ -15,6 +15,7 @@ const typeNames = {
   s:'Картонная коробка (самосборная)'
 };
 const basicPackPrices = { v:3, z:15, b:18, u:15, k:15, s:15 };
+const PREMIUM_PACK_LIMIT = 30; // ₽/шт — Премиум покрывает упаковку до этой суммы
 
 const variantPrices = {
   v1:3, v2:8,
@@ -66,12 +67,18 @@ function pricePerUnit(t, q) {
   if (q >= 100)  return tbl[100];
   return tbl[1];
 }
-function packExtra(s) {
-  if (s.t === 'p' || !s.p || s.p === 'n') return 0;
-  if (/\d/.test(s.p)) return (variantPrices[s.p] || 0) * s.q;
+function packPerUnit(s) {
+  if (!s.p || s.p === 'n') return 0;
+  if (/\d/.test(s.p)) return variantPrices[s.p] || 0;
   let sum = 0;
   for (const ch of s.p) sum += (basicPackPrices[ch] || 0);
-  return sum * s.q;
+  return sum;
+}
+function packExtra(s) {
+  let perUnit = packPerUnit(s);
+  if (perUnit === 0) return 0;
+  if (s.t === 'p') perUnit = Math.max(0, perUnit - PREMIUM_PACK_LIMIT);
+  return perUnit * s.q;
 }
 function compute(s) {
   const per = pricePerUnit(s.t, s.q);
@@ -85,12 +92,19 @@ function compute(s) {
   return { total, totalStr: (isCustom ? '≈ ' : '') + total.toLocaleString('ru') + ' ₽' };
 }
 function packLabel(s) {
-  if (s.t === 'p') return 'включена в тариф';
   if (!s.p)         return 'не указано';
   if (s.p === 'n')  return 'без упаковки';
-  if (variantNames[s.p]) return variantNames[s.p];
-  if (s.p.length === 1)  return typeNames[s.p] || s.p;
-  return [...s.p].map(c => typeNames[c] || c).join(' + ');
+  let baseName;
+  if (variantNames[s.p]) baseName = variantNames[s.p];
+  else if (s.p.length === 1) baseName = typeNames[s.p] || s.p;
+  else baseName = [...s.p].map(c => typeNames[c] || c).join(' + ');
+  if (s.t === 'p') {
+    const extra = Math.max(0, packPerUnit(s) - PREMIUM_PACK_LIMIT);
+    return extra === 0
+      ? `${baseName} (включена в Премиум)`
+      : `${baseName} (+${extra} ₽/шт сверх лимита ${PREMIUM_PACK_LIMIT} ₽)`;
+  }
+  return baseName;
 }
 function togglePack(current, ch) {
   const cur = (!current || current === 'n' || /\d/.test(current)) ? '' : current;
@@ -135,10 +149,9 @@ function nextAfter(s, cur) {
   if (cur === 't') return 'q';
   if (cur === 'q') {
     if (s.t === 'e') return 'l';
-    if (s.t === 'p') return 'd';
     return 'p';
   }
-  if (cur === 'l') return s.t === 'p' ? 'd' : 'p';
+  if (cur === 'l') return 'p';
   if (cur === 'p') return 'd';
   if (cur === 'd') return 'done';
 }
@@ -156,7 +169,6 @@ function backFrom(s, cur) {
     return                    { ...s, p:null, step:'p' };
   }
   if (cur === 'd') {
-    if (s.t === 'p')  return { ...s, q:null, step:'q' };
     if (s.p && /\d/.test(s.p)) {
       const sub = PACK_SUBSTEPS[s.p[0]];
       if (sub) return { ...s, step: sub };
@@ -236,7 +248,8 @@ function buildStep(s) {
       };
     case 'p':
       return {
-        text: `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]} · ${s.q} шт.\n\n<b>Тип упаковки</b>?`,
+        text: `🛒 ${mpNames[s.m]} · 📦 ${tariffNames[s.t]} · ${s.q} шт.\n\n<b>Тип упаковки</b>?` +
+          (s.t === 'p' ? `\n<i>Премиум: до ${PREMIUM_PACK_LIMIT} ₽/шт включено, сверх — по разнице</i>` : ''),
         keyboard: [
           [{ text: 'Без упаковки',           callback_data: enc({...s, p:'n'}, 'd') }],
           [{ text: 'ВПП пакет →',            callback_data: enc({...s, p:null}, 'pvpp') }],
