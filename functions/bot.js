@@ -15,7 +15,7 @@ const typeNames = {
   s:'Картонная коробка (самосборная)'
 };
 const basicPackPrices = { v:3, z:15, b:18, u:15, k:15, s:15 };
-const PREMIUM_PACK_LIMIT = 30; // ₽/шт — Премиум покрывает упаковку до этой суммы
+const PREMIUM_PACK_LIMIT = 15; // ₽/шт — Премиум покрывает упаковку до этой суммы
 
 const variantPrices = {
   v1:3, v2:8,

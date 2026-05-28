@@ -22,7 +22,7 @@ const typeNames = {
 
 // Базовые цены для multi-pack режима (минимальная цена в категории)
 const basicPackPrices = { v:3, z:15, b:18, u:15, k:15, s:15 };
-const PREMIUM_PACK_LIMIT = 30; // ₽/шт — Премиум покрывает упаковку до этой суммы
+const PREMIUM_PACK_LIMIT = 15; // ₽/шт — Премиум покрывает упаковку до этой суммы
 
 // Конкретные размеры — цены
 const variantPrices = {

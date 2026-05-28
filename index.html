@@ -939,7 +939,7 @@
         <!-- ПРЕМИУМ -->
         <div class="pricing-card">
           <div class="pricing-card-name">Премиум</div>
-          <div class="pricing-card-desc">Полный фулфилмент под ключ — упаковка до 30 ₽/шт включена</div>
+          <div class="pricing-card-desc">Полный фулфилмент под ключ — упаковка до 15 ₽/шт включена</div>
           <table class="pricing-table">
             <thead><tr><th>Объём</th><th>₽/шт.</th></tr></thead>
             <tbody>
@@ -955,7 +955,7 @@
             <div class="feature-item"><span class="feature-check">✓</span>Пересчёт + проверка брака</div>
             <div class="feature-item"><span class="feature-check">✓</span>Двойная маркировка</div>
             <div class="feature-item"><span class="feature-check">✓</span>Идентификация SKU</div>
-            <div class="feature-item"><span class="feature-check">✓</span>Упаковка до 30 ₽/шт включена (сверх — по разнице)</div>
+            <div class="feature-item"><span class="feature-check">✓</span>Упаковка до 15 ₽/шт включена (сверх — по разнице)</div>
             <div class="feature-item"><span class="feature-check">✓</span>Фото/видеофиксация</div>
             <div class="feature-item"><span class="feature-check">✓</span>Персональный менеджер</div>
           </div>
@@ -1461,7 +1461,7 @@ function calcUpdate() {
   const markingGroup = document.getElementById('markingGroup');
   const packagingGroup = document.getElementById('packagingGroup');
 
-  const PREMIUM_PACK_LIMIT = 30; // ₽/шт — Премиум покрывает упаковку до этой суммы
+  const PREMIUM_PACK_LIMIT = 15; // ₽/шт — Премиум покрывает упаковку до этой суммы
   let markingIncluded = false;
   if (tariff === 'optimal') { markingIncluded = true; }
   if (tariff === 'standart') { markingIncluded = true; }
