@@ -619,6 +619,31 @@
     /* DIVIDER */
     .divider { height: 1px; background: var(--border); margin: 0; }
 
+    /* PROMO STRIP */
+    .promo-strip {
+      position: relative; z-index: 50; margin-top: 64px;
+      background: linear-gradient(90deg, var(--orange) 0%, #FF8C42 50%, var(--orange) 100%);
+      color: #fff; text-align: center; padding: 12px 20px; font-weight: 600; font-size: 14px;
+      letter-spacing: 0.01em; box-shadow: 0 4px 16px rgba(251,101,20,.22);
+      display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
+    }
+    .promo-strip strong { font-weight: 800; }
+    .promo-strip .promo-badge { background: #fff; color: var(--orange-dk); padding: 2px 10px; border-radius: 100px; font-weight: 800; font-size: 12px; letter-spacing: 0.04em; }
+    .promo-strip a { color: #fff; text-decoration: underline; }
+    @media(max-width:600px){ .promo-strip{ font-size:12px; padding:10px 14px; } }
+    /* Сдвигаем hero так как промо-полоса теперь занимает свой блок */
+    .promo-strip + .hero { padding-top: 60px; }
+
+    /* PROMO CARD in calc */
+    .promo-banner-discount {
+      background: linear-gradient(135deg, rgba(251,101,20,.12), rgba(37,99,235,.06));
+      border: 1px solid rgba(251,101,20,.3); border-radius: 12px;
+      padding: 14px 18px; margin-top: 18px;
+      display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text2);
+    }
+    .promo-banner-discount strong { color: var(--orange-dk); }
+    .calc-line.discount-line span:last-child { color: var(--orange); font-weight: 700; }
+
     /* SCROLL REVEAL (simple fade) */
     .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s, transform 0.6s; }
     .reveal.visible { opacity: 1; transform: none; }
@@ -656,6 +681,12 @@
   <a href="#faq" onclick="closeMobile()">FAQ</a>
   <a href="#contacts" onclick="closeMobile()">Контакты</a>
   <a href="#contacts" onclick="closeMobile()" style="color:#e53e3e;font-weight:600;border:none;">Оставить заявку →</a>
+</div>
+
+<!-- PROMO STRIP -->
+<div class="promo-strip">
+  <span class="promo-badge">АКЦИЯ</span>
+  <span>🎁 Первым клиентам — <strong>скидка 15%</strong> на первый заказ. <a href="#calculator">Рассчитать со скидкой →</a></span>
 </div>
 
 <!-- HERO -->
@@ -1502,7 +1533,10 @@ function calcUpdate() {
   else if (delivVal === 'pallet') delivLabel = 'паллет';
   else if (delivVal === 'custom') delivLabel = 'договорная';
 
-  const total = tariffTotal + markingExtra + packExtra + delivTotal;
+  const subtotal = tariffTotal + markingExtra + packExtra + delivTotal;
+  const FIRST_CLIENT_DISCOUNT = 0.15;
+  const discountAmount = Math.round(subtotal * FIRST_CLIENT_DISCOUNT);
+  const total = subtotal - discountAmount;
 
   const tariffNames = { econom:'Эконом', optimal:'Оптимальный', standart:'Стандарт', premium:'Премиум' };
 
@@ -1511,6 +1545,8 @@ function calcUpdate() {
     <div class="calc-line"><span>Доп. маркировка</span><span>${markingIncluded ? markingLabel : (markingExtra > 0 ? markingExtra.toLocaleString('ru')+' ₽' : markingLabel)}</span></div>
     <div class="calc-line"><span>Упаковка</span><span>${packLineDisplay}</span></div>
     <div class="calc-line"><span>Доставка</span><span>${delivVal === 'custom' ? 'Договорная' : (delivTotal > 0 ? delivTotal.toLocaleString('ru')+' ₽' : delivLabel)}</span></div>
+    <div class="calc-line"><span>Подытог</span><span>${subtotal.toLocaleString('ru')} ₽</span></div>
+    <div class="calc-line discount-line"><span>🎁 Скидка первым клиентам −15%</span><span>−${discountAmount.toLocaleString('ru')} ₽</span></div>
   `;
 
   document.getElementById('calcLines').innerHTML = linesHtml;
@@ -1558,6 +1594,8 @@ function calcUpdate() {
     `🏷 Маркировка: ${markingIncluded ? 'включена в тариф' : markNamesRu[markingVal]}\n` +
     `📫 Упаковка: ${packOfferLabel}\n` +
     `🚚 Доставка: ${delivNamesRu[delivVal]}\n\n` +
+    `Подытог: ${subtotal.toLocaleString('ru')} ₽\n` +
+    `🎁 Скидка первым клиентам −15%: −${discountAmount.toLocaleString('ru')} ₽\n` +
     `💰 Итого: ~${totalStr}\n\n` +
     `Хочу уточнить детали и начать сотрудничество.`;
 
@@ -1575,7 +1613,7 @@ function calcUpdate() {
     marking:   markingIncluded ? 'включена в тариф' : markNamesRu[markingVal],
     packaging: packOfferLabel,
     delivery:  delivNamesRu[delivVal],
-    total:     totalStr
+    total:     `${totalStr} (со скидкой 15%, подытог ${subtotal.toLocaleString('ru')} ₽)`
   };
 }
 

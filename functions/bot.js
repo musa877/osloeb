@@ -16,6 +16,7 @@ const typeNames = {
 };
 const basicPackPrices = { v:3, z:15, b:18, u:15, k:15, s:15 };
 const PREMIUM_PACK_LIMIT = 15; // ₽/шт — Премиум покрывает упаковку до этой суммы
+const FIRST_CLIENT_DISCOUNT = 0.15; // 15% скидка первым клиентам
 
 const variantPrices = {
   v1:3, v2:8,
@@ -87,9 +88,17 @@ function compute(s) {
   if (s.t === 'e' && s.l && s.l !== 'n') markE = markPrices[s.l] * s.q;
   const packE = packExtra(s);
   const delivE = delivPrices[s.d] || 0;
-  const total = tariffTotal + markE + packE + delivE;
+  const subtotal = tariffTotal + markE + packE + delivE;
+  const discount = Math.round(subtotal * FIRST_CLIENT_DISCOUNT);
+  const total = subtotal - discount;
   const isCustom = s.d === 'c' || s.q >= 5000;
-  return { total, totalStr: (isCustom ? '≈ ' : '') + total.toLocaleString('ru') + ' ₽' };
+  const prefix = isCustom ? '≈ ' : '';
+  return {
+    subtotal, discount, total,
+    subtotalStr: prefix + subtotal.toLocaleString('ru') + ' ₽',
+    discountStr: '−' + discount.toLocaleString('ru') + ' ₽',
+    totalStr:    prefix + total.toLocaleString('ru') + ' ₽'
+  };
 }
 function packLabel(s) {
   if (!s.p)         return 'не указано';
@@ -205,7 +214,7 @@ function buildStep(s) {
   switch (s.step) {
     case 'm':
       return {
-        text: '👋 <b>Здравствуйте!</b>\n\nЯ помогу рассчитать стоимость фулфилмента в GoPack за минуту.\n\nВыберите <b>маркетплейс</b>:',
+        text: '👋 <b>Здравствуйте!</b>\n\nЯ помогу рассчитать стоимость фулфилмента в GoPack за минуту.\n\n🎁 <b>Первым клиентам — скидка 15%</b> на первый заказ.\n\nВыберите <b>маркетплейс</b>:',
         keyboard: [
           [{ text: '🟣 Wildberries',    callback_data: enc({...s, m:'w'}, 't') }],
           [{ text: '🔵 Ozon',           callback_data: enc({...s, m:'o'}, 't') }],
@@ -402,6 +411,8 @@ function buildStep(s) {
           `🏷 Маркировка: ${lLabel}\n` +
           `📫 Упаковка: ${pLabel}\n` +
           `🚚 Доставка: ${delivNames[s.d]}\n\n` +
+          `Подытог: ${c.subtotalStr}\n` +
+          `🎁 Скидка первым клиентам −15%: ${c.discountStr}\n` +
           `💰 <b>Итого: ${c.totalStr}</b>\n\n` +
           'Нажмите «Отправить менеджеру» — попрошу телефон, и наш специалист свяжется с вами для уточнения деталей.',
         keyboard: [
@@ -488,6 +499,8 @@ async function sendToManager(env, chatId, s, comment, user) {
       `🏷 Маркировка: ${lLabel}\n` +
       `📫 Упаковка: ${pLabel}\n` +
       `🚚 Доставка: ${delivNames[s.d]}\n\n` +
+      `Подытог: ${c.subtotalStr}\n` +
+      `🎁 Скидка первым клиентам −15%: ${c.discountStr}\n` +
       `💰 <b>Итого: ${c.totalStr}</b>`
   });
 
