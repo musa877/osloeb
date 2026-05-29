@@ -94,7 +94,7 @@ function packExtra(s) {
   return perUnit * s.q;
 }
 
-function compute(s) {
+function compute(s, isRepeat) {
   const per = pricePerUnit(s.t, s.q);
   const tariffTotal = per * s.q;
   let markE = 0;
@@ -102,12 +102,12 @@ function compute(s) {
   const packE = packExtra(s);
   const delivE = delivPrices[s.d] || 0;
   const subtotal = tariffTotal + markE + packE + delivE;
-  const discount = Math.round(subtotal * FIRST_CLIENT_DISCOUNT);
+  const discount = isRepeat ? 0 : Math.round(subtotal * FIRST_CLIENT_DISCOUNT);
   const total = subtotal - discount;
   const isCustom = s.d === 'c' || s.q >= 5000;
   const prefix = isCustom ? '≈ ' : '';
   return {
-    per, tariffTotal, markE, packE, delivE, subtotal, discount, total,
+    per, tariffTotal, markE, packE, delivE, subtotal, discount, total, isRepeat: !!isRepeat,
     subtotalStr: prefix + subtotal.toLocaleString('ru') + ' ₽',
     discountStr: '−' + discount.toLocaleString('ru') + ' ₽',
     totalStr:    prefix + total.toLocaleString('ru') + ' ₽'
@@ -185,6 +185,23 @@ async function clearPending(chatId) {
   catch (e) { lastError = 'clearPending: ' + e.message; }
 }
 
+// Учёт использованной скидки (постоянно, без TTL)
+async function wasUsedByChatId(chatId) {
+  try { return (await store().get('used:chat:' + chatId)) === '1'; }
+  catch (e) { return false; }
+}
+async function wasUsedByPhone(phone) {
+  if (!phone) return false;
+  try { return (await store().get('used:phone:' + phone)) === '1'; }
+  catch (e) { return false; }
+}
+async function markUsed(chatId, phone) {
+  try {
+    if (chatId) await store().set('used:chat:' + chatId, '1');
+    if (phone)  await store().set('used:phone:' + phone, '1');
+  } catch (e) {}
+}
+
 // ──────────────── Навигация ────────────────
 function nextAfter(s, cur) {
   if (cur === 'm') return 't';
@@ -248,11 +265,13 @@ function formatPhone(d) {
 }
 
 // ──────────────── Рендер шагов ────────────────
-function buildStep(s) {
+function buildStep(s, isRepeat) {
   switch (s.step) {
     case 'm':
       return {
-        text: '👋 <b>Здравствуйте!</b>\n\nЯ помогу рассчитать стоимость фулфилмента в GoPack за минуту.\n\n🎁 <b>Первым клиентам — скидка 15%</b> на первый заказ.\n\nВыберите <b>маркетплейс</b>:',
+        text: '👋 <b>Здравствуйте!</b>\n\nЯ помогу рассчитать стоимость фулфилмента в GoPack за минуту.' +
+          (isRepeat ? '' : '\n\n🎁 <b>Первым клиентам — скидка 15%</b> на первый заказ.') +
+          '\n\nВыберите <b>маркетплейс</b>:',
         keyboard: [
           [{ text: '🟣 Wildberries',    callback_data: enc({...s, m:'w'}, 't') }],
           [{ text: '🔵 Ozon',           callback_data: enc({...s, m:'o'}, 't') }],
@@ -450,9 +469,11 @@ function buildStep(s) {
       };
 
     case 'done': {
-      const c = compute(s);
+      const c = compute(s, isRepeat);
       const lLabel = s.t === 'e' ? (markNames[s.l] || 'не указано') : 'включена в тариф';
       const pLabel = packLabel(s);
+      const discountBlock = isRepeat ? '' :
+        `Подытог: ${c.subtotalStr}\n🎁 Скидка первым клиентам −15%: ${c.discountStr}\n`;
       return {
         text:
           '✅ <b>Ваш расчёт готов</b>\n\n' +
@@ -462,8 +483,7 @@ function buildStep(s) {
           `🏷 Маркировка: ${lLabel}\n` +
           `📫 Упаковка: ${pLabel}\n` +
           `🚚 Доставка: ${delivNames[s.d]}\n\n` +
-          `Подытог: ${c.subtotalStr}\n` +
-          `🎁 Скидка первым клиентам −15%: ${c.discountStr}\n` +
+          discountBlock +
           `💰 <b>Итого: ${c.totalStr}</b>\n\n` +
           'Нажмите «Отправить менеджеру» — попрошу телефон, и наш специалист свяжется с вами для уточнения деталей.',
         keyboard: [
@@ -496,8 +516,9 @@ async function tg(method, params) {
   return r.json();
 }
 
-async function sendStep(chatId, s) {
-  const step = buildStep(s);
+async function sendStep(chatId, s, isRepeat) {
+  if (isRepeat === undefined) isRepeat = await wasUsedByChatId(chatId);
+  const step = buildStep(s, isRepeat);
   await tg('sendMessage', {
     chat_id: chatId, text: step.text, parse_mode: 'HTML',
     reply_markup: { inline_keyboard: step.keyboard }
@@ -539,7 +560,10 @@ async function removeReplyKeyboard(chatId, text) {
 }
 
 async function sendToManager(chatId, s, comment, user) {
-  const c = compute(s);
+  const usedChat  = await wasUsedByChatId(chatId);
+  const usedPhone = await wasUsedByPhone(s.phone);
+  const isRepeat  = usedChat || usedPhone;
+  const c = compute(s, isRepeat);
   const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'без имени';
   const link = user.username
     ? '@' + user.username
@@ -547,10 +571,15 @@ async function sendToManager(chatId, s, comment, user) {
   const lLabel = s.t === 'e' ? (markNames[s.l] || 'не указано') : 'включена в тариф';
   const pLabel = packLabel(s);
 
+  const repeatBadge   = isRepeat ? '🔁 <b>Повторный клиент — скидка не применена</b>\n\n' : '';
+  const discountBlock = isRepeat ? '' :
+    `Подытог: ${c.subtotalStr}\n🎁 Скидка первым клиентам −15%: ${c.discountStr}\n`;
+
   await tg('sendMessage', {
     chat_id: MANAGER_CHAT, parse_mode: 'HTML',
     text:
       '🧮 <b>Заявка из Telegram-бота</b>\n\n' +
+      repeatBadge +
       `👤 Клиент: ${fullName}\n` +
       `📞 Телефон: <code>${formatPhone(s.phone)}</code>\n` +
       `💬 Telegram: ${link}\n` +
@@ -561,10 +590,11 @@ async function sendToManager(chatId, s, comment, user) {
       `🏷 Маркировка: ${lLabel}\n` +
       `📫 Упаковка: ${pLabel}\n` +
       `🚚 Доставка: ${delivNames[s.d]}\n\n` +
-      `Подытог: ${c.subtotalStr}\n` +
-      `🎁 Скидка первым клиентам −15%: ${c.discountStr}\n` +
+      discountBlock +
       `💰 <b>Итого: ${c.totalStr}</b>`
   });
+
+  await markUsed(chatId, s.phone);
 
   const sent = buildStep({ step: 'sent' });
   await tg('sendMessage', {
@@ -755,7 +785,8 @@ exports.handler = async (event) => {
           return { statusCode: 200, body: 'ok' };
         }
 
-        const step = buildStep(s);
+        const isRepeat = await wasUsedByChatId(chatId);
+        const step = buildStep(s, isRepeat);
         await tg('editMessageText', {
           chat_id: chatId, message_id: msgId, text: step.text, parse_mode: 'HTML',
           reply_markup: { inline_keyboard: step.keyboard }

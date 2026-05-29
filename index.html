@@ -1535,18 +1535,23 @@ function calcUpdate() {
 
   const subtotal = tariffTotal + markingExtra + packExtra + delivTotal;
   const FIRST_CLIENT_DISCOUNT = 0.15;
-  const discountAmount = Math.round(subtotal * FIRST_CLIENT_DISCOUNT);
+  const isRepeatClient = localStorage.getItem('gopack_discount_used') === '1';
+  const discountAmount = isRepeatClient ? 0 : Math.round(subtotal * FIRST_CLIENT_DISCOUNT);
   const total = subtotal - discountAmount;
 
   const tariffNames = { econom:'Эконом', optimal:'Оптимальный', standart:'Стандарт', premium:'Премиум' };
+
+  const discountLinesHtml = isRepeatClient ? '' : `
+    <div class="calc-line"><span>Подытог</span><span>${subtotal.toLocaleString('ru')} ₽</span></div>
+    <div class="calc-line discount-line"><span>🎁 Скидка первым клиентам −15%</span><span>−${discountAmount.toLocaleString('ru')} ₽</span></div>
+  `;
 
   let linesHtml = `
     <div class="calc-line"><span>Тариф «${tariffNames[tariff]}»</span><span>${tariffPricePerUnit} ₽ × ${qty.toLocaleString('ru')} = ${tariffTotal.toLocaleString('ru')} ₽</span></div>
     <div class="calc-line"><span>Доп. маркировка</span><span>${markingIncluded ? markingLabel : (markingExtra > 0 ? markingExtra.toLocaleString('ru')+' ₽' : markingLabel)}</span></div>
     <div class="calc-line"><span>Упаковка</span><span>${packLineDisplay}</span></div>
     <div class="calc-line"><span>Доставка</span><span>${delivVal === 'custom' ? 'Договорная' : (delivTotal > 0 ? delivTotal.toLocaleString('ru')+' ₽' : delivLabel)}</span></div>
-    <div class="calc-line"><span>Подытог</span><span>${subtotal.toLocaleString('ru')} ₽</span></div>
-    <div class="calc-line discount-line"><span>🎁 Скидка первым клиентам −15%</span><span>−${discountAmount.toLocaleString('ru')} ₽</span></div>
+    ${discountLinesHtml}
   `;
 
   document.getElementById('calcLines').innerHTML = linesHtml;
@@ -1587,6 +1592,10 @@ function calcUpdate() {
     packOfferLabel = packNamesRu[packVal];
   }
 
+  const offerDiscountLines = isRepeatClient ? '' :
+    `Подытог: ${subtotal.toLocaleString('ru')} ₽\n` +
+    `🎁 Скидка первым клиентам −15%: −${discountAmount.toLocaleString('ru')} ₽\n`;
+
   const offerText =
     `Здравствуйте! Я рассчитал стоимость фулфилмента в GoPack:\n\n` +
     `📦 Тариф: ${tariffNames[tariff]}\n` +
@@ -1594,8 +1603,7 @@ function calcUpdate() {
     `🏷 Маркировка: ${markingIncluded ? 'включена в тариф' : markNamesRu[markingVal]}\n` +
     `📫 Упаковка: ${packOfferLabel}\n` +
     `🚚 Доставка: ${delivNamesRu[delivVal]}\n\n` +
-    `Подытог: ${subtotal.toLocaleString('ru')} ₽\n` +
-    `🎁 Скидка первым клиентам −15%: −${discountAmount.toLocaleString('ru')} ₽\n` +
+    offerDiscountLines +
     `💰 Итого: ~${totalStr}\n\n` +
     `Хочу уточнить детали и начать сотрудничество.`;
 
@@ -1613,7 +1621,9 @@ function calcUpdate() {
     marking:   markingIncluded ? 'включена в тариф' : markNamesRu[markingVal],
     packaging: packOfferLabel,
     delivery:  delivNamesRu[delivVal],
-    total:     `${totalStr} (со скидкой 15%, подытог ${subtotal.toLocaleString('ru')} ₽)`
+    total:     isRepeatClient
+      ? totalStr
+      : `${totalStr} (со скидкой 15%, подытог ${subtotal.toLocaleString('ru')} ₽)`
   };
 }
 
@@ -1669,10 +1679,25 @@ async function submitForm(e) {
     comment: document.getElementById('formComment').value
   });
 
+  // Скидка использована — фиксируем
+  localStorage.setItem('gopack_discount_used', '1');
+  hidePromoStrip();
+  if (typeof calcUpdate === 'function') calcUpdate();
+
   submitBtn.textContent = 'Отправить заявку';
   submitBtn.disabled = false;
   document.getElementById('modal').classList.add('open');
   e.target.reset();
+}
+
+function hidePromoStrip() {
+  const strip = document.querySelector('.promo-strip');
+  if (strip) strip.style.display = 'none';
+}
+
+// При загрузке страницы — скрыть промо если скидка уже использована
+if (localStorage.getItem('gopack_discount_used') === '1') {
+  document.addEventListener('DOMContentLoaded', hidePromoStrip);
 }
 
 function closeModal(e) {
